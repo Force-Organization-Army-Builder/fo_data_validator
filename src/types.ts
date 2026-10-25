@@ -54,6 +54,7 @@ export type UnitModifier = Infer<typeof S.UnitModifierSchema>;
 export type UnitModifierAction = Infer<typeof S.UnitModifierActionSchema>;
 
 export type Unit = Infer<typeof S.UnitSchema>;
+export type CompositionBlock = Infer<typeof S.CompositionBlockSchema>;
 export type UnitProfile = Infer<typeof S.UnitProfileSchema>;
 export type Weapon = Infer<typeof S.WeaponSchema>;
 export type WeaponProfile = Infer<typeof S.WeaponProfileSchema>;
@@ -84,8 +85,10 @@ export type NamedSelector = Infer<typeof S.NamedSelectorSchema>;
 export type StatChange = Infer<typeof S.StatChangeSchema>;
 export type StatEffect = Infer<typeof S.StatEffectSchema>;
 export type SpecialRuleEffect = Infer<typeof S.SpecialRuleEffectSchema>;
+export type TraitEffect = Infer<typeof S.TraitEffectSchema>;
 
 export type Group = Infer<typeof S.GroupSchema>;
+export type GroupEffect = Infer<typeof S.GroupEffectSchema>;
 export type Slot = Infer<typeof S.SlotSchema>;
 export type GroupRequirement = Infer<typeof S.GroupRequirementSchema>;
 
