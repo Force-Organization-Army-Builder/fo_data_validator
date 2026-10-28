@@ -341,6 +341,31 @@
                 "message": "Only one General"
             }
         },
+        "artificer": {
+            "id": "artificer",
+            "name": "Artificer",
+            "role": "officer",
+            "type": "infantry",
+            "cost": { "points": 45 },
+            "modelCount": 1,
+            "profiles": [
+                {
+                    "id": "artificer",
+                    "name": "Artificer",
+                    "template": "infantry",
+                    "tags": ["Unique"],
+                    "stats": {
+                        "move": "6",
+                        "skill": "4",
+                        "wounds": "2",
+                        "morale": "8",
+                        "save": "4+"
+                    },
+                    "specialRules": [{ "id": "construct-handler" }]
+                }
+            ],
+            "defaultGear": [{ "kind": "weapon", "id": "knife" }]
+        },
         "captain": {
             "id": "captain",
             "name": "Captain",
@@ -545,6 +570,29 @@
             "id": "disciplined",
             "name": "Disciplined",
             "text": "Re-rolls failed morale tests once per turn."
+        },
+        "construct-handler": {
+            "id": "construct-handler",
+            "name": "Construct Handler",
+            "text": "Adds a Heavy slot to this unit's formation, filled with a Battle or Siege Construct from the Clockwork Guild; its Foundry trait becomes Bonded Constructs.",
+            "slots": [
+                {
+                    "roleChoices": ["heavy"],
+                    "source": { "faction": "clockwork-guild" },
+                    "units": {
+                        "unitIds": ["battle-construct", "siege-construct"]
+                    },
+                    "effects": [
+                        {
+                            "kind": "trait",
+                            "replace": {
+                                "from": ["Foundry"],
+                                "to": "Bonded Constructs"
+                            }
+                        }
+                    ]
+                }
+            ]
         }
     },
     "groups": {
@@ -552,7 +600,15 @@
             "id": "armoured-spearhead",
             "name": "Armoured Spearhead",
             "type": "reserve",
-            "slots": [{ "roles": ["transport"], "repeat": { "max": 3 } }],
+            "slots": [
+                { "roles": ["transport"], "repeat": { "max": 3 } },
+                {
+                    "roles": ["heavy"],
+                    "source": { "faction": "clockwork-guild" },
+                    "units": { "unitIds": ["battle-construct"] },
+                    "effects": [{ "kind": "trait", "add": ["Spearhead"] }]
+                }
+            ],
             "max": "1 + floor(root.count(role:troop) / 2)",
             "requires": [
                 { "units": "@line-troops", "count": 2, "scope": "root" },

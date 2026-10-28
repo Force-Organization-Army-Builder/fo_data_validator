@@ -79,6 +79,7 @@ export type GearSwap = Infer<typeof S.GearSwapSchema>;
 
 export type ProfileFilter = Infer<typeof S.ProfileFilterSchema>;
 export type UnitSelector = Infer<typeof S.UnitSelectorSchema>;
+export type UnitExclusion = Infer<typeof S.UnitExclusionSchema>;
 export type SelectorRef = Infer<typeof S.SelectorRefSchema>;
 export type UnitSelectorOrRef = Infer<typeof S.UnitSelectorOrRefSchema>;
 export type NamedSelector = Infer<typeof S.NamedSelectorSchema>;
@@ -90,6 +91,9 @@ export type TraitEffect = Infer<typeof S.TraitEffectSchema>;
 export type Group = Infer<typeof S.GroupSchema>;
 export type GroupEffect = Infer<typeof S.GroupEffectSchema>;
 export type Slot = Infer<typeof S.SlotSchema>;
+export type SlotSource = Infer<typeof S.SlotSourceSchema>;
+export type SlotUnitEffect = Infer<typeof S.SlotUnitEffectSchema>;
+export type AddedSlot = Infer<typeof S.AddedSlotSchema>;
 export type GroupRequirement = Infer<typeof S.GroupRequirementSchema>;
 
 export type SlotEffect = Infer<typeof S.SlotEffectSchema>;

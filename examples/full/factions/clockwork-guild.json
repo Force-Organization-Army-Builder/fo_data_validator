@@ -1,0 +1,73 @@
+{
+    "$schema": "../../../schema/faction.schema.json",
+    "id": "clockwork-guild",
+    "version": "1.0.0",
+    "name": "Clockwork Guild",
+    "description": "A second faction of the game, whose constructs other factions' slots may draw on (a slot `source`).",
+    "game": { "id": "full-game", "versions": ">=1.0.0 <2.0.0" },
+    "units": {
+        "battle-construct": {
+            "id": "battle-construct",
+            "name": "Battle Construct",
+            "role": "heavy",
+            "type": "vehicle",
+            "traits": ["Foundry"],
+            "cost": { "points": 120 },
+            "modelCount": 1,
+            "profiles": [
+                {
+                    "id": "battle-construct",
+                    "name": "Battle Construct",
+                    "template": "vehicle",
+                    "stats": {
+                        "move": "6",
+                        "hull": "4",
+                        "armour": "3",
+                        "capacity": "0"
+                    }
+                }
+            ],
+            "defaultGear": [{ "kind": "weapon", "id": "maul" }]
+        },
+        "siege-construct": {
+            "id": "siege-construct",
+            "name": "Siege Construct",
+            "role": "heavy",
+            "type": "vehicle",
+            "traits": ["Foundry"],
+            "cost": { "points": 150 },
+            "modelCount": 1,
+            "profiles": [
+                {
+                    "id": "siege-construct",
+                    "name": "Siege Construct",
+                    "template": "vehicle",
+                    "stats": {
+                        "move": "5",
+                        "hull": "5",
+                        "armour": "3",
+                        "capacity": "0"
+                    }
+                }
+            ],
+            "defaultGear": [{ "kind": "weapon", "id": "maul" }]
+        }
+    },
+    "weapons": {
+        "maul": {
+            "id": "maul",
+            "name": "Maul",
+            "template": "melee",
+            "profiles": [
+                {
+                    "name": "Maul",
+                    "stats": { "attacks": "3", "damage": "3" }
+                }
+            ]
+        }
+    },
+    "equipment": {},
+    "upgrades": {},
+    "specialRules": {},
+    "groups": {}
+}

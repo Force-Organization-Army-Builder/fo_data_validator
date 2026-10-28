@@ -353,3 +353,79 @@ describe('traits', () => {
         assert.deepEqual(issues, []);
     });
 });
+
+describe('slots filled from another faction', () => {
+    const fieldArmy = (set: GameDataSet) => set.factions[0].data;
+    const handlerSlot = (set: GameDataSet) =>
+        fieldArmy(set).specialRules['construct-handler'].slots![0];
+    const borrowedSlot = (set: GameDataSet) => {
+        const effect = sub(set, 'veterans').slotOptions!['borrowed-specialists']
+            .effects![0];
+        assert.equal(effect.kind, 'slot');
+        return effect;
+    };
+
+    it("resolves unitIds against the source's units, sub-factions included", async () => {
+        const issues = await issuesAfter((set) => {
+            // the faction's own `squad` isn't a Clockwork Guild unit
+            handlerSlot(set).units = { unitIds: ['battle-construct', 'squad'] };
+            // `any` brings in every sub-faction's units, wherever it's loaded from
+            borrowedSlot(set).units = {
+                unitIds: ['squad', 'veteran-squad', 'militia', 'constructs'],
+            };
+        });
+        assert.deepEqual(issues, [
+            "error factions/field-army.json specialRules/construct-handler/slots/0: unknown unit 'squad'",
+            "error sub-factions/veterans.json slotOptions/borrowed-specialists/effects/0: unknown unit 'constructs'",
+        ]);
+    });
+
+    it('reports unknown factions and sub-factions, with hints', async () => {
+        const issues = await issuesAfter((set) => {
+            handlerSlot(set).source = { faction: 'clockwork-guil' };
+            borrowedSlot(set).source = {
+                faction: 'field-army',
+                subFactions: ['veterans', 'irregular'],
+            };
+            fieldArmy(set).groups['armoured-spearhead'].slots[1].source = {
+                faction: 'field-army',
+                subFactions: ['veterans'],
+            };
+        });
+        assert.deepEqual(issues, [
+            // the spearhead's slot still names a Clockwork Guild unit
+            "error factions/field-army.json groups/armoured-spearhead/slots/1: unknown unit 'battle-construct'",
+            "error factions/field-army.json specialRules/construct-handler/slots/0/source: unknown faction 'clockwork-guil' (did you mean 'clockwork-guild'?)",
+            "error sub-factions/veterans.json slotOptions/borrowed-specialists/effects/0/source: 'field-army' has no sub-faction 'irregular' (did you mean 'irregulars'?)",
+        ]);
+    });
+
+    it("checks a slot's roles, exclusions and effects", async () => {
+        const issues = await issuesAfter((set) => {
+            const slot = handlerSlot(set);
+            slot.roleChoices = [];
+            slot.effects!.push({
+                kind: 'specialRule',
+                rule: { id: 'stubborn' },
+            });
+            borrowedSlot(set).units = {
+                exclude: [{ unitIds: ['general'], traits: ['Veteranz'] }],
+            };
+        });
+        assert.deepEqual(issues, [
+            'error factions/field-army.json specialRules/construct-handler/slots/0: a slot needs at least one role',
+            "error factions/field-army.json specialRules/construct-handler/slots/0/effects/1: unknown special rule 'stubborn'",
+            "warning sub-factions/veterans.json slotOptions/borrowed-specialists/effects/0/exclude/0: no unit has or is given the trait 'Veteranz' (did you mean 'veterans'?)",
+        ]);
+    });
+
+    it('knows traits given to units in sourced slots', async () => {
+        const issues = await issuesAfter((set) => {
+            sub(set, 'irregulars').when = {
+                if: 'main.has(trait:bonded-constructs) or main.has(trait:spearhead)',
+                message: 'Only alongside bonded constructs',
+            };
+        });
+        assert.deepEqual(issues, []);
+    });
+});
