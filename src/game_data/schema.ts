@@ -529,10 +529,23 @@ export const GearLimitSchema = z
     );
 
 export const GearSwapSchema = z
-    .strictObject({ from: GearRefSchema, to: GearRefSchema })
+    .strictObject({
+        from: z
+            .union([GearRefSchema, z.array(GearRefSchema)])
+            .describe(
+                'the gear taken off; a list takes one of each, and a pick needs all of them held'
+            ),
+        to: GearRefSchema,
+    })
     .describe(
-        "Takes one `from` off the upgrade's profile and gives it `to` in its place, per pick"
+        "Takes one `from` (one of each, for a list) off the upgrade's profile and gives it `to` in its place, per pick"
     );
+
+/* a swap's `from` as a list, whether it names one gear or several */
+export const swapFromRefs = (
+    swap: z.infer<typeof GearSwapSchema>
+): Array<z.infer<typeof GearRefSchema>> =>
+    Array.isArray(swap.from) ? swap.from : [swap.from];
 
 export const RestrictionsSchema = z.strictObject({
     exclusions: z.array(GearRefSchema),
