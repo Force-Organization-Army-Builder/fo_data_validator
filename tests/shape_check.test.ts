@@ -63,6 +63,26 @@ describe('checkShapes', () => {
         );
     });
 
+    it('takes a composition max as a number or an expression', async () => {
+        const blocks = (u: Record<string, unknown>) =>
+            u.composition as Array<Record<string, unknown>>;
+        assert.deepEqual(
+            await issuesAfter('pioneer-squad', (u) => {
+                blocks(u)[1].max = 3;
+            }),
+            []
+        );
+        const issues = await issuesAfter('pioneer-squad', (u) => {
+            blocks(u)[1].max = true;
+        });
+        assert.ok(
+            issues.some((i) =>
+                i.startsWith('units/pioneer-squad/composition/1/max: ')
+            ),
+            issues.join('\n')
+        );
+    });
+
     it('reports an unknown key', async () => {
         const issues = await issuesAfter(
             'squad',

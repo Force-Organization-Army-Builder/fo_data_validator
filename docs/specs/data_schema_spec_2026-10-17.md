@@ -273,10 +273,10 @@ A contingent may take **several sub-factions of its faction**: one pick per inde
 A block is `{ id, name?, description?, profiles, min?, max?, cost? }`:
 
 - `profiles`: profile id → models of it in **one copy** of the block (a whole number, at least 1).
-- `min` (default 1): the copies the unit's `cost` buys. `max` (default `min`): the most copies allowed. `min: 0` makes a block optional.
-- `cost`: what each copy above `min` costs, counted like additional-model costs (resource `usedFor: additionalModels`). Required when `max` > `min`.
+- `min` (default 1): the copies the unit's `cost` buys. `max` (default `min`): the most copies allowed, a number or (validator 1.10.0) an expression; see **Live maxima** below. `min: 0` makes a block optional.
+- `cost`: what each copy above `min` costs, counted like additional-model costs (resource `usedFor: additionalModels`). Required when `max` > `min` or `max` is an expression.
 
-Checks: block ids are unique; profile ids exist; a profile is in at most one block (a profile in none has no models, which is a warning); `min` ≤ `max`, both whole; `modelCount` (still required, so older readers see the base unit) equals Σ `min` × models per copy, and isn't 0; `additionalModels` isn't used alongside `composition`.
+Checks: block ids are unique; profile ids exist; a profile is in at most one block (a profile in none has no models, which is a warning); `min` ≤ `max`, both whole (for a fixed `max`); `modelCount` (still required, so older readers see the base unit) equals Σ `min` × models per copy, and isn't 0; `additionalModels` isn't used alongside `composition`.
 
 What the app derives from them:
 
@@ -290,6 +290,14 @@ What the app derives from them:
 
 - The live count of `profile` falls by that many per copy and the replacer's profiles rise by the same, so `unit.models()` and the target's cost are unchanged; the replacer's `cost` is charged per copy above its `min` as for any block.
 - Checks: `block` is another block of the unit and holds `profile`; a block that replaces others isn't itself replaced; the models replaced never exceed what the target holds at its `min` (at the replacers' `min`, and at their `max`); `modelCount` is Σ `min` × models per copy, less Σ replacer `min` × models replaced.
+
+**Live maxima** (validator 1.10.0). A block's `max` may be an expression, for caps that follow the unit: "for every 5 models in the unit, 1 Pioneer may be replaced with 1 Pioneer Chief" is a `pioneer-chief` block with `"max": "floor(unit.models() / 5)"` and `replaces: { block: "pioneer", profile: "pioneer" }` (`examples/full`'s `pioneer-squad`).
+
+- **Evaluated** live for the unit as it stands, with every block's current copies (the block's own included), in the scopes of the unit's `when` (`unit`, `slot`, `group`, `contingent`, `root`, `main`, `list`). A result that isn't whole is rounded down, as for every `min` / `max` (expression spec §11); a negative result counts as 0. An evaluation error counts as 0, shown as a data error (expression spec §11).
+- **In the app:** the cap limits the block's copies. Adding a copy is offered only while the unit with that copy added stays within every block's cap (a candidate is evaluated as if placed). When the cap falls below the copies already taken (the unit shrinks, or something the expression reads changes), the unit gets a list issue naming the block and its cap; copies are never removed automatically, as with any `when` that turns false on something already picked. A saved list's copies above a live cap are kept as saved (they aren't clamped to the cap the way copies outside a fixed range are). Where the app needs the unit's largest size up front (its size range), a replacing block doesn't affect it, and a block that adds models with an expression `max` has no fixed largest size.
+- **Replaced models never exceed the target's.** With an expression `max`, the app also stops a replacing block from taking more models than its target holds at the time, and flags the unit if the target shrinks below what its replacers took.
+- **Circularity:** only a block with `replaces` may call `unit.models()` in its `max` (an error otherwise). A replacing block's copies leave `unit.models()` unchanged, so its cap doesn't move with its own copies. A block that adds models would raise its own cap with each copy. Other reads of the unit's contents (`unit.count`, `unit.sum`, `list.sum`) stay well defined, because the cap is evaluated for the unit as it stands, and aren't flagged.
+- **Checks:** the expression checks in the scopes above; the block has a `cost`. When the `max` reads nothing but `unit.models()`, the checker evaluates it at every size the unit can have (from its size as bought to its largest, which is known when every block that adds models has a fixed `max`, and otherwise only the size as bought). It is an error if the result at the size as bought is below `min`, and a warning if it is never above `min`. For a replacing block, the models its block and its siblings can take must not exceed the fewest the target may hold at each size: the target's `min`, plus whatever growth the size needs once the other blocks that add models have grown to their `max`. The fixed-`max` checks (whole, `min` ≤ `max`, replacers within the target's `min`) don't apply to an expression; a `max` that reads anything else is only enforced live by the app.
 
 A saved list's unit records `composition: { [blockId]: copies }` instead of `additionalModels`. Units without `composition` behave as before; their profile counts stay unknown.
 
@@ -417,7 +425,7 @@ A named selector's own `match` is always inline, so selectors can't refer to eac
 
 ## 9. Expressions in data
 
-Expressions appear only in `when.if`, `min`, `max`, `limit.max`, `repeat.max` and cost values (see the expression spec §3). Examples from the example sources:
+Expressions appear only in `when.if`, `min`, `max` (a composition block's `max` too, validator 1.10.0), `limit.max`, `repeat.max` and cost values (see the expression spec §3). Examples from the example sources:
 
 | Where | Expression |
 | --- | --- |

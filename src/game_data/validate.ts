@@ -6,8 +6,10 @@ import {
     FIELD_SCOPES,
     BuiltInScope,
     BUILT_IN_SCOPES,
+    CompiledExpression,
     tagId,
 } from '../expressions/checker';
+import { evaluateNumber, EvaluationError } from '../expressions/evaluator';
 import { didYouMean } from '../expressions/diagnostics';
 import { DEFAULT_SUB_FACTION_GROUP, swapFromRefs } from './schema';
 import type {
@@ -20,6 +22,7 @@ import type {
     NumberOrExpr,
     Option,
     CostTarget,
+    CompositionBlock,
     ListRule,
     SlotOption,
     SlotSource,
@@ -113,6 +116,43 @@ const TARGET_NAMES: Record<CostTarget, string> = {
     grant: 'grants',
 };
 
+/** Whether an expression calls `unit.models()` */
+const readsModels = (compiled: CompiledExpression) =>
+    [...compiled.scopes].some(
+        ([call, scope]) => scope === 'unit' && call.name === 'models'
+    );
+
+/**
+ * A composition block's `max` expression at each unit size, rounded down and
+ * at least 0 as the app takes it; undefined when it reads anything but
+ * `unit.models()` (another scope, gear, a list choice), which only the
+ * list can answer.
+ */
+function capAt(
+    compiled: CompiledExpression,
+    sizes: ReadonlyArray<number>
+): Array<number> | undefined {
+    try {
+        return sizes.map((n) =>
+            Math.max(
+                evaluateNumber(
+                    compiled,
+                    {
+                        scope: (s) =>
+                            s === 'unit' ? { models: () => n } : undefined,
+                        choice: () => undefined,
+                    },
+                    'max'
+                ),
+                0
+            )
+        );
+    } catch (error) {
+        if (error instanceof EvaluationError) return undefined;
+        throw error;
+    }
+}
+
 /** Records a faction (with a sub-faction merged in, if any) and its game define */
 type Scope = {
     game: GameSystem;
@@ -168,12 +208,12 @@ class Validator {
         vocabulary: ExpressionVocabulary,
         lint?: ExpressionField['lint']
     ) {
-        const { diagnostics } = checkExpression(
+        const checked = checkExpression(
             source,
             { scopes, result, lint },
             vocabulary
         );
-        for (const d of diagnostics) {
+        for (const d of checked.diagnostics) {
             this.issues.push({
                 severity: d.severity,
                 file: this.file,
@@ -182,6 +222,7 @@ class Validator {
                 expression: { source, start: d.start, end: d.end },
             });
         }
+        return checked;
     }
 
     private numberOrExpr(
@@ -808,13 +849,18 @@ class Validator {
     /*
      * A unit's composition blocks: profiles in at most one block, whole
      * numbers, a cost wherever the unit can grow, and a `modelCount` that
-     * matches the blocks at their minimum.
+     * matches the blocks at their minimum. A `max` may be an expression
+     * (validator 1.10.0), evaluated live for the unit as it stands; one that
+     * depends on nothing but `unit.models()` is worked out at every size the
+     * unit can have, so the checks on fixed maxima apply to it too.
      */
     private composition(unit: Unit, profileIds: Array<string>, scope: Scope) {
         const path = `units/${unit.id}/composition`;
         const blocks = unit.composition ?? [];
         const whole = (n: number, least: number) =>
             Number.isInteger(n) && n >= least;
+        const size = (block: CompositionBlock) =>
+            Object.values(block.profiles).reduce((sum, n) => sum + n, 0);
         if (unit.additionalModels)
             this.report(
                 `units/${unit.id}/additionalModels`,
@@ -825,6 +871,8 @@ class Validator {
         if (new Set(blockIds).size !== blockIds.length)
             this.report(path, 'block ids repeat');
         const blockOf = new Map<string, string>();
+        /** block id → its `max` expression, when it checks */
+        const live = new Map<string, CompiledExpression>();
         let baseModels = 0;
         for (const block of blocks) {
             const at = `${path}/${block.id}`;
@@ -847,18 +895,40 @@ class Validator {
                 blockOf.set(profile, block.id);
             }
             const min = block.min ?? 1;
-            const max = block.max ?? min;
             if (!whole(min, 0))
                 this.report(at, `min must be a whole number (got ${min})`);
-            if (!whole(max, 0))
-                this.report(at, `max must be a whole number (got ${max})`);
-            if (max < min)
-                this.report(at, `min ${min} is more than max ${max}`);
-            if (max > min && !block.cost)
-                this.report(
-                    at,
-                    'a block the unit can add copies of needs a cost per copy'
+            if (typeof block.max === 'string') {
+                const { compiled } = this.expression(
+                    `${at}/max`,
+                    block.max,
+                    FIELD_SCOPES.unit,
+                    'number',
+                    scope.vocabulary
                 );
+                if (!block.cost)
+                    this.report(
+                        at,
+                        'a block whose max is an expression can add copies, so it needs a cost per copy'
+                    );
+                // its own copies would raise or lower its own cap
+                if (compiled && !block.replaces && readsModels(compiled))
+                    this.report(
+                        `${at}/max`,
+                        "this block adds models, so its own copies change unit.models(); only a block that replaces models (`replaces`) may read it in its max"
+                    );
+                else if (compiled) live.set(block.id, compiled);
+            } else {
+                const max = block.max ?? min;
+                if (!whole(max, 0))
+                    this.report(at, `max must be a whole number (got ${max})`);
+                if (max < min)
+                    this.report(at, `min ${min} is more than max ${max}`);
+                if (max > min && !block.cost)
+                    this.report(
+                        at,
+                        'a block the unit can add copies of needs a cost per copy'
+                    );
+            }
             if (block.cost)
                 this.costs(
                     `${at}/cost`,
@@ -867,11 +937,11 @@ class Validator {
                     FIELD_SCOPES.unit,
                     'additionalModels'
                 );
-            baseModels +=
-                min * counts.reduce((sum, [, count]) => sum + count, 0);
+            baseModels += min * size(block);
         }
+
         // `replaces`: the replacer's models take the place of the target's
-        const taken = new Map<string, { min: number; max: number }>();
+        const replacers = new Map<string, Array<CompositionBlock>>();
         for (const block of blocks) {
             if (!block.replaces) continue;
             const at = `${path}/${block.id}/replaces`;
@@ -888,44 +958,126 @@ class Validator {
                     at,
                     `block '${targetId}' itself replaces another block's models; chain the replacement from the block that holds the models`
                 );
-            const held = target.profiles[profile];
-            if (held === undefined) {
+            if (target.profiles[profile] === undefined) {
                 this.report(
                     at,
                     `block '${targetId}' has no profile '${profile}'`
                 );
                 continue;
             }
-            const size = Object.values(block.profiles).reduce(
-                (sum, count) => sum + count,
-                0
-            );
-            const min = block.min ?? 1;
-            const max = block.max ?? min;
             const key = `${targetId}/${profile}`;
-            const soFar = taken.get(key) ?? { min: 0, max: 0 };
-            taken.set(key, {
-                min: soFar.min + min * size,
-                max: soFar.max + max * size,
-            });
-            baseModels -= min * size;
+            replacers.set(key, [...(replacers.get(key) ?? []), block]);
+            baseModels -= (block.min ?? 1) * size(block);
         }
-        for (const [key, { min, max }] of taken) {
+
+        // the sizes the unit can have: known in full when every block that
+        // adds models has a fixed max, else only the size as bought
+        const growth = (block: CompositionBlock) => {
+            const min = block.min ?? 1;
+            return typeof block.max === 'string'
+                ? undefined
+                : (Math.max(block.max ?? min, min) - min) * size(block);
+        };
+        const growths = blocks.filter((b) => !b.replaces).map(growth);
+        const largest = growths.every((g) => g !== undefined)
+            ? baseModels + growths.reduce((sum, g) => sum + g, 0)
+            : undefined;
+        const sizes: Array<number> = [];
+        if (whole(baseModels, 1))
+            for (let n = baseModels; n <= (largest ?? baseModels); n++)
+                if (sizes.push(n) > 1000) break;
+        /** block id → its `max` at each of `sizes`, when it can be worked out */
+        const caps = new Map<string, Array<number>>();
+        for (const [id, compiled] of live) {
+            const values = sizes.length ? capAt(compiled, sizes) : undefined;
+            if (values) caps.set(id, values);
+        }
+        for (const block of blocks) {
+            const values = caps.get(block.id);
+            if (!values) continue;
+            const at = `${path}/${block.id}/max`;
+            const min = block.min ?? 1;
+            if (values[0] < min)
+                this.report(
+                    at,
+                    `at the unit's size as bought (${baseModels} models) this max is ${values[0]}, below the block's min ${min}`
+                );
+            else if (largest !== undefined && values.every((v) => v <= min))
+                this.report(
+                    at,
+                    `this max is never above min ${min} at any size the unit can have (${baseModels}–${largest} models), so the block never grows`,
+                    'warning'
+                );
+        }
+
+        for (const [key, blocksReplacing] of replacers) {
             const [targetId, profile] = key.split('/');
             const target = blocks.find((b) => b.id === targetId)!;
-            const supply = (target.min ?? 1) * target.profiles[profile];
+            const held = target.profiles[profile];
+            const targetMin = target.min ?? 1;
+            const supply = targetMin * held;
             const at = `${path}/${targetId}`;
-            if (min > supply)
+            const takenMin = blocksReplacing.reduce(
+                (sum, b) => sum + (b.min ?? 1) * size(b),
+                0
+            );
+            if (takenMin > supply) {
                 this.report(
                     at,
-                    `blocks replacing '${profile}' take ${min} models at their min, but '${targetId}' holds only ${supply} at its min`
+                    `blocks replacing '${profile}' take ${takenMin} models at their min, but '${targetId}' holds only ${supply} at its min`
                 );
-            else if (max > supply)
-                this.report(
-                    at,
-                    `blocks replacing '${profile}' can take ${max} models, but '${targetId}' holds only ${supply} at its min`
+                continue;
+            }
+            if (blocksReplacing.every((b) => typeof b.max !== 'string')) {
+                const takenMax = blocksReplacing.reduce(
+                    (sum, b) =>
+                        sum + ((b.max as number) ?? b.min ?? 1) * size(b),
+                    0
                 );
+                if (takenMax > supply)
+                    this.report(
+                        at,
+                        `blocks replacing '${profile}' can take ${takenMax} models, but '${targetId}' holds only ${supply} at its min`
+                    );
+                continue;
+            }
+            // a live max that can't be worked out is left to the app
+            if (
+                blocksReplacing.some(
+                    (b) => typeof b.max === 'string' && !caps.has(b.id)
+                )
+            )
+                continue;
+            // at each size, against the fewest the target may hold then: the
+            // other blocks that add models are grown first
+            const otherGrowth = blocks
+                .filter((b) => !b.replaces && b !== target)
+                .reduce((sum, b) => sum + (growth(b) ?? 0), 0);
+            const targetGrowth = (growth(target) ?? 0) / size(target);
+            for (const [i, n] of sizes.entries()) {
+                const takes = blocksReplacing.reduce(
+                    (sum, b) =>
+                        sum +
+                        (typeof b.max === 'string'
+                            ? caps.get(b.id)![i]
+                            : (b.max ?? b.min ?? 1)) *
+                            size(b),
+                    0
+                );
+                const extra = Math.max(n - baseModels - otherGrowth, 0);
+                const copies =
+                    targetMin +
+                    Math.min(Math.ceil(extra / size(target)), targetGrowth);
+                if (takes > copies * held) {
+                    this.report(
+                        at,
+                        `blocks replacing '${profile}' can take ${takes} models when the unit has ${n}, but '${targetId}' may then hold only ${copies * held}`
+                    );
+                    break;
+                }
+            }
         }
+
         if (baseModels !== unit.modelCount)
             this.report(
                 `units/${unit.id}/modelCount`,

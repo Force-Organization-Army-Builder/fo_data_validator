@@ -506,6 +506,112 @@ describe('composition blocks that replace models', () => {
     });
 });
 
+describe('composition blocks with an expression max', () => {
+    const pioneers = (set: GameDataSet) =>
+        set.factions[0].data.units['pioneer-squad'];
+    const at = 'factions/field-army.json units/pioneer-squad/composition';
+
+    it('accepts a live max on a block that replaces models', async () => {
+        assert.deepEqual(await issuesAfter(() => {}), []);
+    });
+
+    it('checks the expression in the unit scopes', async () => {
+        const issues = await issuesAfter((set) => {
+            pioneers(set).composition![1].max = 'option.picks()';
+        });
+        assert.equal(issues.length, 1);
+        assert.match(
+            issues[0],
+            /^error .*pioneer-chief\/max: 'option' isn't available here/
+        );
+    });
+
+    it('needs a cost', async () => {
+        const issues = await issuesAfter((set) => {
+            delete pioneers(set).composition![1].cost;
+        });
+        assert.deepEqual(issues, [
+            `error ${at}/pioneer-chief: a block whose max is an expression can add copies, so it needs a cost per copy`,
+        ]);
+    });
+
+    it('lets only a replacing block read unit.models()', async () => {
+        const issues = await issuesAfter((set) => {
+            pioneers(set).composition![0].max = '5 + floor(unit.models() / 2)';
+        });
+        assert.deepEqual(issues, [
+            `error ${at}/pioneer/max: this block adds models, so its own copies change unit.models(); only a block that replaces models (\`replaces\`) may read it in its max`,
+        ]);
+    });
+
+    it('allows a live max on a block that adds models when it reads something else', async () => {
+        const issues = await issuesAfter((set) => {
+            pioneers(set).composition![0].max =
+                '5 + 5 * min(root.count(role:support), 2)';
+        });
+        assert.deepEqual(issues, []);
+    });
+
+    it('checks the max at the size as bought against min', async () => {
+        const issues = await issuesAfter((set) => {
+            pioneers(set).composition![1].min = 2;
+        });
+        assert.deepEqual(issues, [
+            `error ${at}/pioneer-chief/max: at the unit's size as bought (5 models) this max is 1, below the block's min 2`,
+        ]);
+    });
+
+    it('warns about a max that never lets the block grow, counting a negative result as 0', async () => {
+        const issues = await issuesAfter((set) => {
+            pioneers(set).composition![1].max = 'floor(unit.models() / 5) - 3';
+        });
+        assert.deepEqual(issues, [
+            `warning ${at}/pioneer-chief/max: this max is never above min 0 at any size the unit can have (5–15 models), so the block never grows`,
+        ]);
+    });
+
+    it('does not let blocks replace more models than the target holds at any size', async () => {
+        const issues = await issuesAfter((set) => {
+            pioneers(set).composition![1].max = 'unit.models() + 1';
+        });
+        assert.deepEqual(issues, [
+            `error ${at}/pioneer: blocks replacing 'pioneer' can take 6 models when the unit has 5, but 'pioneer' may then hold only 5`,
+        ]);
+
+        // every model replaced is fine: the target grows with the unit
+        const all = await issuesAfter((set) => {
+            pioneers(set).composition![1].max = 'unit.models()';
+        });
+        assert.deepEqual(all, []);
+    });
+
+    it('counts the other blocks that add models as grown first', async () => {
+        const issues = await issuesAfter((set) => {
+            const unit = pioneers(set);
+            unit.profiles.push({ ...unit.profiles[0], id: 'hauler' });
+            unit.composition!.push({
+                id: 'hauler',
+                profiles: { hauler: 1 },
+                min: 0,
+                max: 10,
+                cost: { points: 5 },
+            });
+            unit.composition![1].max = 'floor(unit.models() / 2)';
+        });
+        // at 25 models the Pioneers may still be only 5 (10 Haulers), and 12 > 5
+        assert.deepEqual(issues, [
+            `error ${at}/pioneer: blocks replacing 'pioneer' can take 6 models when the unit has 12, but 'pioneer' may then hold only 5`,
+        ]);
+    });
+
+    it('leaves a max that reads the list to the app', async () => {
+        const issues = await issuesAfter((set) => {
+            pioneers(set).composition![1].max = '20 * list.count(role:support)';
+        });
+        assert.deepEqual(issues, []);
+    });
+});
+
 describe('slot option units', () => {
     it('checks the selector', async () => {
         const issues = await issuesAfter((set) => {

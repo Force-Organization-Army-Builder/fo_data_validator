@@ -616,6 +616,50 @@
                     }
                 }
             }
+        },
+        "pioneer-squad": {
+            "id": "pioneer-squad",
+            "name": "Pioneer Squad",
+            "description": "A replacing block with a live max: 5 Pioneers, up to 10 more at +12 points each; for every 5 models in the unit, 1 Pioneer may be replaced with 1 Pioneer Chief for +20 points. The Chiefs take Pioneers' places, so unit.models() doesn't change with them.",
+            "role": "support",
+            "type": "infantry",
+            "traits": ["Field Army"],
+            "cost": { "points": 60 },
+            "modelCount": 5,
+            "composition": [
+                {
+                    "id": "pioneer",
+                    "name": "Pioneer",
+                    "profiles": { "pioneer": 1 },
+                    "min": 5,
+                    "max": 15,
+                    "cost": { "points": 12 }
+                },
+                {
+                    "id": "pioneer-chief",
+                    "name": "Pioneer Chief",
+                    "profiles": { "pioneer-chief": 1 },
+                    "min": 0,
+                    "max": "floor(unit.models() / 5)",
+                    "cost": { "points": 20 },
+                    "replaces": { "block": "pioneer", "profile": "pioneer" }
+                }
+            ],
+            "profiles": [
+                {
+                    "id": "pioneer",
+                    "name": "Pioneer",
+                    "template": "infantry",
+                    "stats": { "move": "5", "skill": "5", "wounds": "1", "morale": "6", "save": "5+" }
+                },
+                {
+                    "id": "pioneer-chief",
+                    "name": "Pioneer Chief",
+                    "template": "infantry",
+                    "stats": { "move": "5", "skill": "4", "wounds": "1", "morale": "7", "save": "5+" }
+                }
+            ],
+            "defaultGear": [{ "kind": "weapon", "id": "rifle", "perModel": true }]
         }
     },
     "weapons": {

@@ -160,7 +160,7 @@ Required: `id`, `version`, `name`, `game: { "id", "versions" }` and all of `unit
 ```
 
 - `profiles` gives the models of each profile in **one copy** of the block (whole numbers, at least 1). A profile is in at most one block; one in no block has no models (a warning).
-- `min` (default 1) is the number of copies the unit's `cost` buys, and `max` (default `min`) is the most it may hold. A block whose `max` is above `min` needs a `cost` for each extra copy. `min: 0` makes a block optional.
+- `min` (default 1) is the number of copies the unit's `cost` buys, and `max` (default `min`) is the most it may hold. `max` may be an expression (see below). A block whose `max` is above `min`, or an expression, needs a `cost` for each extra copy. `min: 0` makes a block optional.
 - `modelCount` is still required and must equal the blocks at their `min` (Σ `min` × models per copy), so older apps still read the unit. Don't use `additionalModels` alongside `composition`.
 - The app counts each profile's models from the copies taken, which drives `unit.models()`, `perModel` default gear, and per-model upgrades. A `perModel` upgrade with a `profileId` counts only that profile's models, so "each Loader may exchange…" is `"profileId": "loader", "perModel": { "type": "some" }`.
 - Needs validator 1.2.0+ and an app that supports composition blocks.
@@ -175,6 +175,22 @@ Required: `id`, `version`, `name`, `game: { "id", "versions" }` and all of `unit
     ```
 
     Each copy of the replacing block takes as many models of `profile` off the target block as it holds itself, so the unit's size and the target's cost stay the same and only the profile counts move (5 Sappers and 1 Foreman). The replacer's `max` can't exceed what the target holds at its `min`, and `modelCount` is Σ `min` × models per copy, less the models replaced at the replacer's `min`. A replacing block can't itself be replaced.
+- **`max` as an expression** (validator 1.10.0): a block's `max` may be an expression, for caps that follow the unit, e.g. "5 Pioneers, up to 10 more at +15 points each; for every 5 models in the unit, 1 Pioneer may be replaced with 1 Pioneer Chief for +20 points":
+
+    ```json
+    "modelCount": 5,
+    "composition": [
+        { "id": "pioneer", "profiles": { "pioneer": 1 }, "min": 5, "max": 15, "cost": { "points": 15 } },
+        { "id": "pioneer-chief", "profiles": { "pioneer-chief": 1 }, "min": 0, "max": "floor(unit.models() / 5)", "cost": { "points": 20 },
+          "replaces": { "block": "pioneer", "profile": "pioneer" } }
+    ]
+    ```
+
+    - It is evaluated live for the unit as it stands, every block's copies included, and sees the same scopes as the unit's `when` (`unit`, `slot`, `group`, `contingent`, `root`, `main`, `list`). A result that isn't whole rounds down; a negative one counts as 0.
+    - The app won't let the player add a copy above the cap. When the cap falls below the copies already taken (fewer Pioneers, so fewer Pioneer Chiefs allowed), it flags the unit and leaves the copies for the player to remove.
+    - Only a block that `replaces` models may read `unit.models()` in its `max`: its copies don't change the unit's size. A block that adds models would change its own cap with every copy, so that is an error. Write its cap against something its copies don't change (another unit, a list choice), or model the models as replacements.
+    - The block needs a `cost`, as it can grow. Where the `max` reads nothing but `unit.models()`, the checker works it out at every size the unit can have: below `min` at the size as bought is an error, never above `min` a warning, and a replacing block may never take more models than the target can hold at that size (counting the other blocks that add models as grown first). A `max` that reads anything else is only checked by the app, live.
+    - See `pioneer-squad` in `examples/full`.
 
 ### Weapons, equipment, special rules
 
@@ -449,7 +465,7 @@ list.limit(points) >= 3000                        a condition: when of a group
 unit.has(weapon:cannon) ? 25 : 15              a number: cost of an option
 ```
 
-**Where:** `when.if` (bool); `min`/`max` on upgrades, options, groups, group types, count rules, unit `limit.max`, slot `repeat.max` (number); cost values and resource `grants` (number).
+**Where:** `when.if` (bool); `min`/`max` on upgrades, options, groups, group types, count rules, unit `limit.max`, slot `repeat.max`, composition block `max` (validator 1.10.0) (number); cost values and resource `grants` (number).
 
 **Syntax:** numbers; `+ - * /`; `== != < <= > >=` (not chainable); `and or not true false`; `a ? b : c` (spaces around the colon); `( )`. Names are lowercase with single hyphens inside, so write `a - b` with spaces for subtraction. No variables, strings, loops or property access.
 
@@ -460,7 +476,7 @@ unit.has(weapon:cannon) ? 25 : 15              a number: cost of an option
 | group `when` | `contingent`, `root`, `main`, `list` |
 | group `min`/`max` | `group`, `contingent`, `root`, `main`, `list` |
 | slot `when`/`repeat.max`, slot options | `slot`, `group`, `contingent`, `root`, `main`, `list` |
-| unit `when`/`limit.max`/cost | `unit`, `slot`, `group`, `contingent`, `root`, `main`, `list` |
+| unit `when`/`limit.max`/cost, composition block `max`/cost | `unit`, `slot`, `group`, `contingent`, `root`, `main`, `list` |
 | upgrade `when`/`min`/`max` | the unit's, plus `profile` when the upgrade has a `profileId` |
 | option `when`/`max`/cost, sub-choice values | `option`, plus an upgrade's |
 | stat / special-rule effect `when` | `profile`, `unit`, `slot`, `group`, `contingent`, `root`, `main`, `list` (trait effects: the same without `profile`) |

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.10.0
+
+- **Composition `max` as an expression.** A composition block's `max` may be an expression, evaluated live for the unit as it stands (the block's own copies included) in the unit's scopes (`unit`, `slot`, `group`, `contingent`, `root`, `main`, `list`), rounded down, with a negative result counting as 0. For "for every 5 models in the unit, 1 Pioneer may be replaced with 1 Pioneer Chief": `{ "id": "pioneer-chief", "profiles": { "pioneer-chief": 1 }, "min": 0, "max": "floor(unit.models() / 5)", "cost": { "points": 20 }, "replaces": { "block": "pioneer", "profile": "pioneer" } }`. When the cap drops below the copies taken, the app flags the unit; it doesn't remove copies.
+- New checks: the expression checks in the unit's scopes; a block with an expression `max` needs a `cost`; only a block that `replaces` models may read `unit.models()` in its `max` (a block that adds models would change its own cap). A `max` that reads nothing but `unit.models()` is worked out at every size the unit can have: below the block's `min` at the size as bought is an error, never above `min` is a warning, and the models a replacing block can take are checked against the fewest the target may hold at each size. A `max` that reads anything else is left to the app.
+- `examples/full` has a `pioneer-squad` using it.
+- `schemaVersion` stays 1 and `expressionVersion` stays 1; everything is additive. Data using an expression `max` on a block needs validator ≥1.10.0 and an app that supports it.
+
 ## 1.9.0
 
 - **`perModel.count` for `one-in-x`.** A `one-in-x` upgrade may set `count`, the picks allowed per `everyX` models, so the cap is `count × floor(models / everyX)`. For "Up to two models in every five may each swap their X …": `"perModel": { "type": "one-in-x", "everyX": 5, "count": 2 }` (2 picks at 5 to 9 models, 4 at 10, where `multiple` with `max: 2` stays at 2). Left out, it is 1, as before. New checks: `count` on any other `perModel.type` is an error (pointing `multiple` / `single` at `max`), as is a `count` that isn't a whole number of at least 1; `count: 1` is a warning, since it is the default.

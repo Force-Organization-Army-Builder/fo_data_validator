@@ -31,7 +31,7 @@ If a game's `terms` give them words, e.g. `core.` and `formation.`, those may be
 | Field | Found on | Result |
 | --- | --- | --- |
 | `when.if` | units, upgrades, options, groups, slots, stat and special-rule effects, expression list rules | bool |
-| `min`, `max` | upgrades, options, groups, group types, count list rules, unit `limit.max`, slot `repeat.max` | number |
+| `min`, `max` | upgrades, options, groups, group types, count list rules, unit `limit.max`, slot `repeat.max`, composition block `max` (validator 1.10.0) | number |
 | cost values | `cost` maps on units and options (`{ "points": "…" }`) | number |
 
 A numeric field holds either a plain number or an expression string; a `when` is always a **condition object** with the player-facing reason:
@@ -151,7 +151,7 @@ A field sees its own subject and everything containing it.
 | --- | --- |
 | Group `when` / `max` | `contingent`, `root`, `main`, `list` (+ `group` for rules checked after the group is added) |
 | Slot `when`, `repeat.max` | `slot`, `group`, `contingent`, `root`, `main`, `list` |
-| Unit `when`, `limit.max`, `cost` | `unit`, `slot`, `group`, `contingent`, `root`, `main`, `list` |
+| Unit `when`, `limit.max`, `cost`; composition block `max`, `cost` | `unit`, `slot`, `group`, `contingent`, `root`, `main`, `list` (a block's `max` may call `unit.models()` only on a block with `replaces`; data schema spec §5.1) |
 | Upgrade `when` / `min` / `max` | `profile` (with `profileId`), `unit`, `slot`, `group`, `contingent`, `root`, `main`, `list` |
 | Option `when` / `max` / `cost` | `option`, plus everything an upgrade sees |
 | Stat / special-rule effect `when` | `profile`, `unit`, `slot`, `group`, `contingent`, `root`, `main`, `list` |
@@ -239,7 +239,7 @@ Unknown ids get "did you mean". Tags are free text in unit data (`Sergeant`, `He
 - **Candidates are evaluated as if placed.** A unit in the picker is evaluated as if it were in the slot; a group in the Add menu as if it were in the list.
 - **`when` false on something not picked:** it's shown disabled with the condition's `message` (the "prevent, don't report" rule).
 - **`when` false on something already picked:** a list alert with the `message`; nothing is removed automatically. Only typed rules auto-fix, because they know how.
-- **`min` / `max`:** compared live; a result that isn't a whole number is rounded down. Use `floor` / `ceil` to make rounding explicit.
+- **`min` / `max`:** compared live; a result that isn't a whole number is rounded down. Use `floor` / `ceil` to make rounding explicit. A composition block's `max` counts a negative result as 0, and copies above it are flagged, not removed (data schema spec §5.1).
 - **`cost`:** must be zero or more.
 - **Evaluation errors** (division by zero, a negative cost) never crash the builder: the rule is treated as not met (`when` false, `max` 0, `min` unmet, the item can't be priced) and shown as a data error naming the source, record and field.
 - **Determinism:** the same list and data always give the same result.

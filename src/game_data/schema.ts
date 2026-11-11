@@ -757,12 +757,11 @@ export const CompositionBlockSchema = z
             .describe(
                 'copies in the unit as bought for its `cost`; left out = 1'
             ),
-        max: z
-            .number()
-            .optional()
-            .describe('most copies the unit may hold; left out = `min`'),
+        max: NumberOrExprSchema.optional().describe(
+            "most copies the unit may hold; left out = `min`. An expression (validator 1.10.0) is evaluated live for the unit as it stands, in the unit's scopes, e.g. `floor(unit.models() / 5)` on a block that `replaces` models; only a block with `replaces` may read `unit.models()`"
+        ),
         cost: CostsSchema.optional().describe(
-            'what each copy above `min` costs; needed when `max` is more than `min`'
+            'what each copy above `min` costs; needed when `max` is more than `min` or an expression'
         ),
         replaces: z
             .strictObject({
