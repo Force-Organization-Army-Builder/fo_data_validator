@@ -66,6 +66,8 @@ function traitsOf(sources: Array<TraitSource>) {
     for (const s of sources) {
         for (const unit of Object.values(s.units ?? {})) {
             unit.traits?.forEach((t) => traits.add(t));
+            for (const profile of unit.profiles)
+                profile.traits?.forEach((t) => traits.add(t));
             for (const upgrade of Object.values(unit.upgrades ?? {}))
                 fromOptions(upgrade.options);
         }

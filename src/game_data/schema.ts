@@ -665,6 +665,12 @@ const upgradeShape = {
     grantedBy: SlugSchema.optional().describe(
         'id of the sub-faction unit modifier that added this upgrade'
     ),
+    gearNote: z
+        .string()
+        .optional()
+        .describe(
+            "a short note shown next to every gear this upgrade's picks give (validator 1.11.0), e.g. a mount: `Hull mounted`. It covers the options' `weaponRefs` / `equipmentRefs` and swap `to`s, the `default` option's and those of options reached through a reference included (the referencing upgrade's note wins over the shared upgrade's). Display only: gear is still matched, counted and swapped by kind and id"
+        ),
 };
 
 export const UpgradeSchema = z.strictObject({
@@ -710,6 +716,12 @@ export const DefaultGearSchema = z
         profileId: SlugSchema.optional().describe(
             'the profile that carries it; left out, the unit at large does. With `perModel`: one for each model of that profile'
         ),
+        note: z
+            .string()
+            .optional()
+            .describe(
+                "a short note shown next to this gear wherever the unit's gear is listed (validator 1.11.0), e.g. a mount: `Turret mounted`. Display only: gear is still matched, counted and swapped by kind and id"
+            ),
     })
     .describe('Gear a unit carries without taking any upgrade');
 
@@ -732,6 +744,12 @@ export const UnitProfileSchema = z.strictObject({
         .array(z.string())
         .optional()
         .describe("added to the unit's tags for this profile (e.g. Sergeant)"),
+    traits: z
+        .array(z.string())
+        .optional()
+        .describe(
+            "added to the unit's traits for this profile (validator 1.11.0), e.g. a Shield trait only the shield-bearers have: `profile.is(trait:…)` and profile-level matching see the unit's traits plus these, and the unit counts as holding them (selector `traits`, `unit.is(trait:…)`, container `count(trait:…)`) when any of its profiles does, as with profile `tags`"
+        ),
 });
 
 export const CompositionBlockSchema = z
@@ -834,7 +852,12 @@ export const UnitSchema = z.strictObject({
 
 export const WeaponProfileSchema = z.strictObject({
     name: z.string(),
-    stats: z.record(SlugSchema, z.string()),
+    template: SlugSchema.optional().describe(
+        "a weapon stat template id from the game for this profile, in place of the weapon's `template` (validator 1.11.0), e.g. `melee` on the close-combat profile of a spear whose weapon `template` is `ranged`"
+    ),
+    stats: z
+        .record(SlugSchema, z.string())
+        .describe("stat id → value, checked against the profile's template"),
     traits: z.array(z.string()).optional(),
     specialRules: z.array(SpecialRuleSelectionSchema).optional(),
 });
@@ -843,7 +866,7 @@ export const WeaponSchema = z.strictObject({
     ...named,
     id: SlugSchema,
     template: SlugSchema.describe(
-        'a weapon stat template id from the game, e.g. `ranged` / `melee`'
+        "a weapon stat template id from the game, e.g. `ranged` / `melee`: the template of every profile without its own `template`"
     ),
     profiles: z.array(WeaponProfileSchema),
 });

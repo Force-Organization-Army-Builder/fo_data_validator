@@ -458,11 +458,9 @@ class Validator {
             );
         if (faction.defaultGroup) {
             const id = faction.defaultGroup;
-            const group =
-                faction.groups?.[id] ?? game.groups?.[id];
+            const group = faction.groups?.[id] ?? game.groups?.[id];
             const type = group && game.groupTypes[group.type];
-            if (!group)
-                this.report('defaultGroup', `unknown group '${id}'`);
+            if (!group) this.report('defaultGroup', `unknown group '${id}'`);
             else if (
                 type?.contingent !== 'root' ||
                 (type.source ?? 'main') !== 'main'
@@ -675,21 +673,33 @@ class Validator {
     private records(r: Partial<FactionRecords>, scope: Scope) {
         const { game } = scope;
         for (const weapon of Object.values(r.weapons ?? {})) {
-            const template = game.stats.weapon[weapon.template];
-            if (!template) {
+            if (!game.stats.weapon[weapon.template])
                 this.report(
                     `weapons/${weapon.id}`,
                     `unknown weapon template '${weapon.template}'`
                 );
-                continue;
-            }
-            weapon.profiles.forEach((p, i) =>
+            weapon.profiles.forEach((p, i) => {
+                // a profile's own template (validator 1.11.0) wins over the weapon's
+                const at = `weapons/${weapon.id}/profiles/${i}`;
+                const id = p.template ?? weapon.template;
+                const template = game.stats.weapon[id];
+                if (!template) {
+                    if (p.template)
+                        this.report(at, `unknown weapon template '${id}'`);
+                    return;
+                }
+                if (p.template === weapon.template)
+                    this.report(
+                        at,
+                        `the profile's template is the weapon's '${weapon.template}' already; leave it out`,
+                        'warning'
+                    );
                 this.stats(
-                    `weapons/${weapon.id}/profiles/${i}`,
+                    at,
                     p.stats,
                     template.stats.map((s) => s.id)
-                )
-            );
+                );
+            });
             weapon.profiles.forEach((p, i) =>
                 p.specialRules?.forEach((s) =>
                     this.rule(`weapons/${weapon.id}/profiles/${i}`, s, scope)
@@ -819,6 +829,9 @@ class Validator {
                     profileIds
                 );
         }
+        unit.defaultGear?.forEach((gear, i) =>
+            this.gearNote(`${path}/defaultGear/${i}/note`, gear.note)
+        );
 
         const upgradeIds = keys(unit.upgrades);
         for (const upgrade of Object.values(unit.upgrades ?? {})) {
@@ -914,7 +927,7 @@ class Validator {
                 if (compiled && !block.replaces && readsModels(compiled))
                     this.report(
                         `${at}/max`,
-                        "this block adds models, so its own copies change unit.models(); only a block that replaces models (`replaces`) may read it in its max"
+                        'this block adds models, so its own copies change unit.models(); only a block that replaces models (`replaces`) may read it in its max'
                     );
                 else if (compiled) live.set(block.id, compiled);
             } else {
@@ -1134,6 +1147,36 @@ class Validator {
     }
 
     /*
+     * A gear note (validator 1.11.0) is only shown to players, next to the
+     * gear; a blank one shows nothing, so it is probably a mistake.
+     */
+    private gearNote(path: string, note: string | undefined) {
+        if (note !== undefined && !note.trim())
+            this.report(
+                path,
+                'the note is empty, so nothing is shown; write one or leave it out',
+                'warning'
+            );
+    }
+
+    /* whether any option the upgrade offers, references expanded, gives gear */
+    private givesGear(upgrade: Upgrade, scope: Scope) {
+        const gives = (o: Option) =>
+            !!(
+                o.weaponRefs?.length ||
+                o.equipmentRefs?.length ||
+                o.swaps?.length
+            );
+        return Object.values(upgrade.options).some((o) =>
+            'target' in o
+                ? Object.values(
+                      scope.records.upgrades?.[o.target]?.options ?? {}
+                  ).some(gives)
+                : gives(o)
+        );
+    }
+
+    /*
      * `perModel.count` is the number of picks per `everyX` models, so it only
      * means something for `one-in-x` and must be a whole number of at least 1;
      * 1 is the default, so writing it is redundant (a warning).
@@ -1340,10 +1383,7 @@ class Validator {
         for (const ref of from) this.gear(path, ref, scope);
         this.gear(path, swap.to, scope);
         if (!from.length)
-            this.report(
-                `${path}/from`,
-                'a from list needs at least one gear'
-            );
+            this.report(`${path}/from`, 'a from list needs at least one gear');
         const seen = new Set<string>();
         for (const ref of from) {
             const key = `${ref.kind}:${ref.id}`;
@@ -1385,6 +1425,13 @@ class Validator {
         if (upgrade.perModel.type === 'one-in-x' && !upgrade.perModel.everyX)
             this.report(path, "a 'one-in-x' upgrade needs everyX");
         this.perModelCount(`${path}/perModel`, upgrade);
+        this.gearNote(`${path}/gearNote`, upgrade.gearNote);
+        if (upgrade.gearNote?.trim() && !this.givesGear(upgrade, scope))
+            this.report(
+                `${path}/gearNote`,
+                'none of its options give gear, so the note is never shown',
+                'warning'
+            );
 
         upgrade.restrictions?.exclusions.forEach((e) =>
             this.gear(`${path}/restrictions`, e, scope)
@@ -1392,9 +1439,7 @@ class Validator {
         upgrade.restrictions?.required.forEach((e) =>
             this.gear(`${path}/restrictions`, e, scope)
         );
-        upgrade.limitBy?.forEach((l) =>
-            this.gear(`${path}/limitBy`, l, scope)
-        );
+        upgrade.limitBy?.forEach((l) => this.gear(`${path}/limitBy`, l, scope));
 
         this.condition(
             path,
@@ -1638,12 +1683,7 @@ class Validator {
         const { game } = scope;
         for (const group of Object.values(groups ?? {})) {
             const at = `${path}/${group.id}`;
-            this.known(
-                at,
-                'group type',
-                group.type,
-                keys(game.groupTypes)
-            );
+            this.known(at, 'group type', group.type, keys(game.groupTypes));
             this.selector(at, group.units, scope);
             group.slots.forEach((slot, i) => {
                 const s = `${at}/slots/${i}`;
