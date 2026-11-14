@@ -104,7 +104,7 @@ Costs are maps of resource to amount:
 
 ### 3.6 Stat templates
 
-The game declares unit and weapon templates; each profile names its template and its `stats` must have exactly the template's keys:
+The game declares unit and weapon templates; each profile names its template and its `stats` must have exactly the template's keys. A weapon names one `template` for its profiles; a weapon profile may name its own (validator 1.11.0), which replaces the weapon's for that profile, so one weapon can have a ranged and a melee profile (an unknown profile template is an error, one equal to the weapon's a warning):
 
 ```json
 "vehicle": {
@@ -247,7 +247,9 @@ A contingent may take **several sub-factions of its faction**: one pick per inde
 - `role` and `type` are game ids; `tags` (on units and profiles) are matched by `tag:` references and profile filters.
 - Profiles always have an `id` and a `template`.
 - `excludeProfiles` (a `ProfileFilter`) leaves profiles out of default gear and per-model config. `perModel` with a `profileId` gives one to each model of that profile.
+- A `defaultGear` entry's **`note`** (validator 1.11.0) is a short text shown next to that gear, e.g. its mount (§6, gear notes).
 - **`traits`** are free text, matched case-insensitively by `trait:` references (expression spec §9) and selector `traits` (§8). Effects can change them (§5.2).
+- **Profile `traits`** (validator 1.11.0) are traits only that profile's models have. A profile holds its unit's traits plus its own (`profile.is(trait:…)`); the unit holds a trait when it or any of its profiles does (selector `traits`, `unit.is(trait:…)`, container `count`/`has`/`sum` with `trait:`), as profile `tags` count for the unit. They are known to the checker like unit traits.
 - **`when`** limits when the unit may be taken. **`limit`** caps how many a group, contingent or list may hold, with an optional expression (`militia` in `examples/extension`: "one, plus one per two Infantry Squads").
 
 ### 5.1 Composition blocks
@@ -308,7 +310,7 @@ A saved list's unit records `composition: { [blockId]: copies }` instead of `add
 { "kind": "trait", "replace": { "from": ["Disciplined", "Drilled"], "to": "Veteran Corps" }, "when": { … } }
 ```
 
-A trait effect (validator 1.2.0) changes a unit's `traits`: `add` gives traits, `remove` takes them away if present, and `replace` takes away any of `from` and gives `to` only if one was there. Traits belong to the whole unit, so there is no profile filter and its `when` has no `profile` scope. It may appear wherever stat and special-rule effects do: option `effects`, slot-option `effects`, unit-modifier `actions` and group `effects` (§7). At least one of `add`, `remove` and `replace` is required; a trait both given and taken away is a warning.
+A trait effect (validator 1.2.0) changes a unit's `traits`: `add` gives traits, `remove` takes them away if present, and `replace` takes away any of `from` and gives `to` only if one was there. There is no profile filter and its `when` has no `profile` scope. `add` gives the trait to the unit; `remove` and `replace` (validator 1.11.0) also act on each profile's own `traits`, so a profile that held one of `from` gets `to` on that profile (a faction trait swap reaches every model, and a profile-only trait stays on its profile). It may appear wherever stat and special-rule effects do: option `effects`, slot-option `effects`, unit-modifier `actions` and group `effects` (§7). At least one of `add`, `remove` and `replace` is required; a trait both given and taken away is a warning.
 
 **Order.** The app resolves a unit's traits in steps: the unit's own `traits`, then sub-faction unit modifiers, option effects, the group's effects, the slot's `effects` (§7.1), and slot-option effects. Each step's conditions see the traits from the steps before it. A group's and its slots' `units` selectors see the unit's traits before the group's and slot options' effects (a group can't admit units by the trait it gives them); a slot with a `source` sees only the unit's own `traits`. Everything else (`trait:` references in other expressions, list rules) sees the final traits.
 
@@ -333,6 +335,24 @@ A unit's upgrades hold options or references to faction upgrades, and may use `r
 - **Upgrade `swapFrom`** (`{ kind, id, count? }`, `count` defaults to 1, must be positive): each pick of any option of the upgrade removes `count` of that gear from the profile that holds it (`profileId`, or the unit at large), up to what is held, in addition to giving the option's own `weaponRefs` / `equipmentRefs`. The new gear comes only from the option's refs. Unlike option-level `swaps: [{ from, to }]`, which name both sides and so belong to one option, `swapFrom` sits on the upgrade and covers every option, including those reached through an UpgradeReference to a shared faction upgrade, whose list replaces different gear in different units. An option with its own `swaps` uses those instead; the `default` option is never affected. Checks: `id` exists in the faction's weapons/equipment (sub-faction merging respected), `count` is positive; warnings if every option is the default or the unit holds the gear neither in `defaultGear` nor in a default option, unless the upgrade's `restrictions.required` names it (validator 1.7.0): the gear then comes from an earlier pick, and the swap applies only once it is held. Example: `perModel: { type: "one-in-x", everyX: 5 }`, `swapFrom: { kind: "weapon", id: "pistol" }`, options `none` plus `{ "id": "pistols-list", "target": "pistols-list" }`.
 - **Option `swaps`** (`[{ from, to }]`): each pick of the option takes one `from` off the profile that holds it and gives one `to`. `from` is a gear ref or (validator 1.7.0) a non-empty list of gear refs, each listed once: a pick then takes one of every listed gear and gives a single `to`, and the picks are capped by the scarcest `from` held, so a pick never takes some of them only ("pistol and sword for one pair of twin blades"). Checks: every `from` and the `to` exist; a `from` list is not empty and names no gear twice. The checker doesn't check that the unit holds a `from` by default (the option may follow another pick).
 - **Upgrade `mirrorOf`** (validator 1.8.0): the id of a sibling unit upgrade (its **source**) whose pick this upgrade (the **mirror**) always copies: the same option id, never chosen by the player, with the amount set by the mirror's own `perModel` and `profileId`. It expresses "every model takes the same item" across profiles, since gear is filed per profile and an upgrade only gives to and swaps from its own profile. Cost is per pick, so each profile pays for its own models. Only on unit upgrades, not on faction upgrades. Checks (errors): the source exists in the same unit and isn't the mirror itself; the source has no `mirrorOf` (no chains, hence no cycles); the two have different `profileId`s; their option id sets, with UpgradeReferences expanded, are equal; their `default`s are equal; the mirror's `perModel.type` is `every` or `single`; neither `replaces` the other. Warnings: `multiSelect` differs from the source's; the mirror has `restrictions` (upgrade or reference) or `limitBy`, which could block the copy. Sub-faction `addUpgrade` copies and `grantedBy` don't interact with it: added copies come from faction upgrades, which can't mirror, and a source must be one of the unit's own upgrades.
+- **Gear notes** (validator 1.11.0): a short text shown to players next to one use of a piece of gear rather than on its record, for a weapon mounted in different places on different units ("Turret mounted" on one vehicle, "Hull mounted" on another) while it keeps one id. A `defaultGear` entry's `note` is shown next to that gear. An upgrade's `gearNote` is shown next to every gear its picks give: its options' `weaponRefs` / `equipmentRefs` and swap `to`s, including the `default` option's and those of options reached through an UpgradeReference. So a shared faction upgrade can stay note-free while each unit's referencing upgrade gives the mount for that unit; when both have one, the referencing upgrade's wins. A faction upgrade's own `gearNote` goes with its sub-faction `addUpgrade` copies. Notes are for display only: restrictions, `limitBy`, `swapFrom`, swap `from` and `count` / `has` in expressions still match and count gear by kind and id, and a swap's `to` takes the note of the upgrade it is in, not the note of the gear it removes. There is no note on a single ref; gear in two places at once takes a note naming both, or is split into separate default gear entries or upgrades. Checks (warnings): an empty note; a `gearNote` on an upgrade none of whose options (references expanded) give gear. See `walker` and `trooper-sidearm` in `examples/full`.
+
+    ```json
+    "defaultGear": [{ "kind": "weapon", "id": "cannon", "note": "Turret mounted" }],
+    "upgrades": {
+        "hull-weapon": {
+            "id": "hull-weapon",
+            "name": "Hull weapon",
+            "gearNote": "Hull mounted",
+            "perModel": { "type": "single" },
+            "default": "machine-gun",
+            "options": {
+                "machine-gun": { "id": "machine-gun", "name": "Machine gun", "cost": { "points": 0 }, "weaponRefs": ["machine-gun"] },
+                "flamer": { "id": "flamer", "name": "Flamer", "cost": { "points": 10 }, "weaponRefs": ["flamer"] }
+            }
+        }
+    }
+    ```
 - **Sub-choices** are shared records (game or faction `subChoices`) that options list by id, so a weapon's mount is defined once:
 
     ```json

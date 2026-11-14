@@ -295,6 +295,31 @@ describe('unit composition', () => {
     });
 });
 
+describe('weapon profile templates', () => {
+    const spear = (set: GameDataSet) =>
+        set.factions[0].data.weapons['spear'].profiles;
+
+    it("checks a profile's stats against its own template", async () => {
+        const issues = await issuesAfter((set) => {
+            spear(set)[1].stats = { range: '1"', attacks: '2', damage: '1' };
+        });
+        assert.deepEqual(issues, [
+            'error factions/field-army.json weapons/spear/profiles/1: stats not in the template: range',
+        ]);
+    });
+
+    it('reports an unknown profile template and warns on a redundant one', async () => {
+        const issues = await issuesAfter((set) => {
+            spear(set)[0].template = 'ranged';
+            spear(set)[1].template = 'mele';
+        });
+        assert.deepEqual(issues, [
+            "warning factions/field-army.json weapons/spear/profiles/0: the profile's template is the weapon's 'ranged' already; leave it out",
+            "error factions/field-army.json weapons/spear/profiles/1: unknown weapon template 'mele'",
+        ]);
+    });
+});
+
 describe('traits', () => {
     it('checks trait effects, with no profile scope in their conditions', async () => {
         const issues = await issuesAfter((set) => {
@@ -343,6 +368,15 @@ describe('traits', () => {
         assert.deepEqual(issues, [
             "warning sub-factions/veterans.json unitModifiers/veteran-corps: no unit has or is given the trait 'Disiplined' (did you mean 'disciplined'?)",
         ]);
+    });
+
+    it('knows traits only a profile has', async () => {
+        const issues = await issuesAfter((set) => {
+            sub(set, 'veterans').unitModifiers!['veteran-corps'].selector = {
+                traits: ['Shield'],
+            };
+        });
+        assert.deepEqual(issues, []);
     });
 
     it('knows traits given by effects in other factions', async () => {
@@ -783,6 +817,7 @@ describe('upgrade swapFrom', () => {
     it('warns when the only option is the default', async () => {
         const issues = await issuesAfter((set) => {
             sidearm(set).options = { none: sidearm(set).options['none'] };
+            delete sidearm(set).gearNote;
         });
         assert.deepEqual(issues, [
             'warning factions/field-army.json units/squad/upgrades/trooper-sidearm/swapFrom: every option is the default, so nothing is ever swapped',
@@ -819,6 +854,47 @@ describe('upgrade swapFrom', () => {
                 "warning factions/field-army.json units/captain/upgrades/captain-axe/swapFrom: the unit doesn't hold weapon 'twin-blades' by default, so there is nothing to take off",
             ]
         );
+    });
+});
+
+describe('gear notes', () => {
+    const walker = (set: GameDataSet) => set.factions[0].data.units['walker'];
+    const at = 'factions/field-army.json units/walker';
+
+    it('accepts the example: a default gear note and an upgrade note covering a shared list', async () => {
+        // trooper-sidearm's only gear comes from the shared sidearms list
+        assert.deepEqual(await issuesAfter(() => {}), []);
+    });
+
+    it('warns about an empty note', async () => {
+        const issues = await issuesAfter((set) => {
+            walker(set).defaultGear![0].note = ' ';
+            walker(set).upgrades!['fittings'].gearNote = '';
+        });
+        assert.deepEqual(issues, [
+            `warning ${at}/defaultGear/0/note: the note is empty, so nothing is shown; write one or leave it out`,
+            `warning ${at}/upgrades/fittings/gearNote: the note is empty, so nothing is shown; write one or leave it out`,
+        ]);
+    });
+
+    it('warns about an upgrade note when no option gives gear', async () => {
+        const issues = await issuesAfter((set) => {
+            const fittings = walker(set).upgrades!['fittings'];
+            fittings.gearNote = 'Turret mounted';
+            delete fittings.options['mounted-cannon'];
+        });
+        assert.deepEqual(issues, [
+            `warning ${at}/upgrades/fittings/gearNote: none of its options give gear, so the note is never shown`,
+        ]);
+    });
+
+    it('counts swaps as giving gear', async () => {
+        const issues = await issuesAfter((set) => {
+            set.factions[0].data.units['captain'].upgrades![
+                'captain-blades'
+            ].gearNote = 'Off hand';
+        });
+        assert.deepEqual(issues, []);
     });
 });
 

@@ -194,7 +194,7 @@ The same kind can mean different things on different scopes; the checker knows e
 - `tag:` on `slot` means the game's slot tags; on `unit` and `profile` the unit's and profile's tags;
 - `type:` on `unit`/`profile` means unit type; on `group`/`root` group type.
 
-Traits are free text too and match the same way (`trait:gun-line` for `Gun Line`). A unit's traits include those effects give it (data schema spec §5.2), so the known traits are every unit's `traits` plus every trait effect's `add` and `replace.to`, across all the game's factions (`main` and `list` see other factions' units). An unknown `trait:` is a warning. On a profile, `is(trait:…)` tests its unit's traits.
+Traits are free text too and match the same way (`trait:gun-line` for `Gun Line`). A unit's traits include those effects give it (data schema spec §5.2), so the known traits are every unit's `traits` plus every trait effect's `add` and `replace.to`, across all the game's factions (`main` and `list` see other factions' units), and profiles' `traits` (validator 1.11.0). An unknown `trait:` is a warning. On a profile, `is(trait:…)` tests its unit's traits and its own; on a unit (and in container `count`), a trait any of its profiles has counts.
 
 Unknown ids get "did you mean". Tags are free text in unit data (`Sergeant`, `Heavy Assault`), so a `tag:` reference matches them case-insensitively and writes them in id form, lowercase with hyphens (`tag:sergeant`, `tag:heavy-assault`), the same way profile filters match. An unknown `tag:` on a unit is a lint warning (no unit in the faction has it), not an error.
 

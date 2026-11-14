@@ -51,6 +51,7 @@
                     "name": "Sergeant",
                     "template": "infantry",
                     "tags": ["Sergeant"],
+                    "traits": ["Shield"],
                     "stats": {
                         "move": "6",
                         "skill": "3",
@@ -161,6 +162,7 @@
                     "default": "none",
                     "perModel": { "type": "one-in-x", "everyX": 5, "count": 2 },
                     "swapFrom": { "kind": "weapon", "id": "rifle" },
+                    "gearNote": "Sidearm",
                     "options": {
                         "none": {
                             "id": "none",
@@ -264,7 +266,9 @@
                     }
                 }
             ],
-            "defaultGear": [{ "kind": "weapon", "id": "cannon" }],
+            "defaultGear": [
+                { "kind": "weapon", "id": "cannon", "note": "Hull mounted" }
+            ],
             "upgrades": {
                 "fittings": {
                     "id": "fittings",
@@ -350,7 +354,10 @@
                     "specialRules": [{ "id": "quartermaster", "value": "3" }]
                 }
             ],
-            "defaultGear": [{ "kind": "weapon", "id": "twin-blades" }],
+            "defaultGear": [
+                { "kind": "weapon", "id": "twin-blades" },
+                { "kind": "weapon", "id": "spear" }
+            ],
             "limit": {
                 "max": 1,
                 "scope": "list",
@@ -697,6 +704,23 @@
             "template": "melee",
             "profiles": [
                 { "name": "Knife", "stats": { "attacks": "1", "damage": "1" } }
+            ]
+        },
+        "spear": {
+            "id": "spear",
+            "name": "Spear",
+            "template": "ranged",
+            "profiles": [
+                {
+                    "name": "Spear (Thrown)",
+                    "stats": { "range": "8\"", "attacks": "1", "damage": "1" }
+                },
+                {
+                    "name": "Spear (Melee)",
+                    "template": "melee",
+                    "stats": { "attacks": "2", "damage": "1" },
+                    "traits": ["Reach"]
+                }
             ]
         },
         "axe": {

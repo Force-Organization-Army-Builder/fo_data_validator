@@ -153,6 +153,8 @@ Data that uses `perModel.count` needs validator **1.9.0** or later, and an app t
 
 Data that uses an expression as a composition block's `max` needs validator **1.10.0** or later, and an app that supports it.
 
+Data that uses a weapon profile's own `template`, a unit profile's `traits`, or gear notes (default gear `note`, upgrade `gearNote`) needs validator **1.11.0** or later, and an app that supports them.
+
 ## Releasing
 
 1. Make sure `npm test`, `npm run type-check`, `npm run lint`, `npm run generate-schema -- --check` and `npm run validate-data` pass (CI runs them).
