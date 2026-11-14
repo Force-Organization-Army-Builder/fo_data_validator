@@ -205,6 +205,36 @@
                 }
             ]
         },
+        "trained-spotters": {
+            "id": "trained-spotters",
+            "name": "Trained spotters",
+            "description": "Matches the Gun Team by its Gunner's profile trait; the effect only reaches the models with it.",
+            "selector": { "traits": ["Spotter"] },
+            "actions": [
+                {
+                    "kind": "stat",
+                    "changes": [
+                        { "stat": "skill", "op": "add", "value": -1, "min": 1 }
+                    ],
+                    "when": {
+                        "if": "profile.is(trait:spotter)",
+                        "message": "Spotters only"
+                    }
+                }
+            ]
+        },
+        "tower-shields": {
+            "id": "tower-shields",
+            "name": "Tower shields",
+            "description": "Replaces a trait only the Sergeant's profile has; the new trait stays on that profile.",
+            "selector": { "traits": ["Shield"] },
+            "actions": [
+                {
+                    "kind": "trait",
+                    "replace": { "from": ["Shield"], "to": "Tower Shield" }
+                }
+            ]
+        },
         "no-walkers": {
             "id": "no-walkers",
             "name": "No Walkers",
