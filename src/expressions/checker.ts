@@ -98,6 +98,11 @@ export type ExpressionVocabulary = {
     slotTags: ReadonlyArray<string>;
     /** tags used on units and profiles; tags are free text, so an unknown one is only a warning */
     tags: ReadonlyArray<string>;
+    /**
+     * the game's sub-types in `tagId` form (ids and names), when it defines
+     * any; then a `tag:` reference is checked against these instead of `tags`
+     */
+    subTypes?: ReadonlyArray<string>;
     /** traits units have or effects give, in any faction of the game; free text, so an unknown one is only a warning */
     traits?: ReadonlyArray<string>;
     /** resource id → where it's spent */
@@ -740,7 +745,14 @@ class Checker {
                         this.known(arg, 'slot tag', arg.id, v.slotTags)
                     );
                 }
-                if (!v.tags.map(tagId).includes(arg.id)) {
+                if (v.subTypes) {
+                    if (!v.subTypes.includes(arg.id))
+                        this.report(
+                            'warning',
+                            `the game defines no sub-type '${arg.id}'${didYouMean(arg.id, v.subTypes)}`,
+                            arg
+                        );
+                } else if (!v.tags.map(tagId).includes(arg.id)) {
                     this.report(
                         'warning',
                         `no unit or profile has the tag '${arg.id}'${didYouMean(arg.id, v.tags.map(tagId))}`,

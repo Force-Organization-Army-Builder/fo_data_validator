@@ -43,7 +43,7 @@ import type {
     GearRef,
     GearSwap,
 } from '../types';
-import { buildVocabulary } from './vocabulary';
+import { buildVocabulary, subTypeTags } from './vocabulary';
 
 /*
  * Integrity checks for game data in the new schema (data schema spec §11): ids
@@ -85,6 +85,21 @@ const RECORD_KINDS = [
 ] as const satisfies ReadonlyArray<keyof FactionRecords>;
 
 const keys = (record?: object) => Object.keys(record ?? {});
+
+/* A `ProfileFilter`: only `anyOf` / `noneOf`, each a list of text */
+const isProfileFilter = (
+    value: unknown
+): value is { anyOf?: Array<string>; noneOf?: Array<string> } =>
+    typeof value === 'object' &&
+    !!value &&
+    !Array.isArray(value) &&
+    Object.keys(value).length > 0 &&
+    Object.entries(value).every(
+        ([k, v]) =>
+            (k === 'anyOf' || k === 'noneOf') &&
+            Array.isArray(v) &&
+            v.every((x) => typeof x === 'string')
+    );
 
 /* Structural equality of JSON data */
 function sameData(a: unknown, b: unknown): boolean {
@@ -164,7 +179,12 @@ type Scope = {
 class Validator {
     readonly issues: Array<DataIssue> = [];
 
-    constructor(private readonly set: GameDataSet) {}
+    /* the game's sub-types in `tagId` form, when it defines any */
+    private readonly subTypes: Array<string> | undefined;
+
+    constructor(private readonly set: GameDataSet) {
+        this.subTypes = subTypeTags(set.game.data);
+    }
 
     private file = '';
 
@@ -198,6 +218,57 @@ class Validator {
     ) {
         if (![...ids].includes(id))
             this.report(path, `unknown ${what} '${id}'`);
+    }
+
+    /* With game `subTypes`: a unit or profile tag that matches none is a warning */
+    private tags(path: string, tags: ReadonlyArray<string> | undefined) {
+        const subTypes = this.subTypes;
+        if (!subTypes) return;
+        for (const tag of tags ?? []) {
+            if (!subTypes.includes(tagId(tag)))
+                this.report(
+                    `${path}/tags`,
+                    `the tag '${tag}' matches no sub-type${didYouMean(tagId(tag), subTypes)}`,
+                    'warning'
+                );
+        }
+    }
+
+    /*
+     * With game `subTypes`: a profile filter (`profiles` / `excludeProfiles`
+     * anywhere in a file) value that is neither a unit type id nor a sub-type
+     * is a warning. Filters match case-insensitively, as in the app.
+     */
+    private profileFilters(path: string, data: unknown) {
+        const subTypes = this.subTypes;
+        if (!subTypes || typeof data !== 'object' || !data) return;
+        if (Array.isArray(data)) {
+            data.forEach((d, i) => this.profileFilters(`${path}/${i}`, d));
+            return;
+        }
+        const unitTypes = keys(this.set.game.data.unitTypes);
+        for (const [key, value] of Object.entries(data)) {
+            const at = path ? `${path}/${key}` : key;
+            if (
+                (key === 'profiles' || key === 'excludeProfiles') &&
+                isProfileFilter(value)
+            ) {
+                for (const v of [
+                    ...(value.anyOf ?? []),
+                    ...(value.noneOf ?? []),
+                ]) {
+                    if (
+                        !unitTypes.includes(v.trim().toLowerCase()) &&
+                        !subTypes.includes(tagId(v))
+                    )
+                        this.report(
+                            at,
+                            `'${v}' matches no unit type or sub-type${didYouMean(tagId(v), [...unitTypes, ...subTypes])}`,
+                            'warning'
+                        );
+                }
+            } else this.profileFilters(at, value);
+        }
     }
 
     private expression(
@@ -255,14 +326,17 @@ class Validator {
         const { game, factions, subFactions } = this.set;
         this.file = game.file;
         this.gameSystem(game.data);
+        this.profileFilters('', game.data);
 
         for (const faction of factions) {
             this.file = faction.file;
             this.faction(faction.data);
+            this.profileFilters('', faction.data);
         }
         for (const sub of subFactions) {
             this.file = sub.file;
             this.subFaction(sub.data);
+            this.profileFilters('', sub.data);
         }
         for (const faction of factions) this.combinedSubFactions(faction.data);
         return this.issues;
@@ -298,6 +372,7 @@ class Validator {
         for (const kind of [
             'roles',
             'unitTypes',
+            'subTypes',
             'groupTypes',
             'slotTags',
             'resources',
@@ -789,6 +864,7 @@ class Validator {
         const { game } = scope;
         this.known(path, 'role', unit.role, keys(game.roles));
         this.known(path, 'unit type', unit.type, keys(game.unitTypes));
+        this.tags(path, unit.tags);
         this.costs(`${path}/cost`, unit.cost, scope, FIELD_SCOPES.unit, 'unit');
         if (unit.additionalModels)
             this.costs(
@@ -816,6 +892,7 @@ class Validator {
                 );
             if (profile.type)
                 this.known(at, 'unit type', profile.type, keys(game.unitTypes));
+            this.tags(at, profile.tags);
             profile.specialRules?.forEach((s) => this.rule(at, s, scope));
         });
 

@@ -288,7 +288,17 @@ export const RoleSchema = z.strictObject({
     ),
 });
 
-export const UnitTypeSchema = z.strictObject({ ...named, id: SlugSchema });
+export const UnitTypeSchema = z
+    .strictObject({ ...named, id: SlugSchema })
+    .describe(
+        'A unit type; `description` holds the rules every unit of the type follows'
+    );
+
+export const SubTypeSchema = z
+    .strictObject({ ...named, id: SlugSchema })
+    .describe(
+        'A unit sub-type, given to units and profiles as a `tags` entry matching its name (case-insensitively) or id; `description` holds the rules every model with the sub-type follows'
+    );
 
 export const GroupTypeSchema = z.strictObject({
     ...named,
@@ -808,7 +818,7 @@ export const UnitSchema = z.strictObject({
         .array(z.string())
         .optional()
         .describe(
-            'keywords and sub-types, matched by `tag:` references and profile filters'
+            'keywords and sub-types, matched by `tag:` references and profile filters; free text, though when the game defines `subTypes` a tag that matches none is a warning'
         ),
     cost: CostsSchema,
     modelCount: z
@@ -866,7 +876,7 @@ export const WeaponSchema = z.strictObject({
     ...named,
     id: SlugSchema,
     template: SlugSchema.describe(
-        "a weapon stat template id from the game, e.g. `ranged` / `melee`: the template of every profile without its own `template`"
+        'a weapon stat template id from the game, e.g. `ranged` / `melee`: the template of every profile without its own `template`'
     ),
     profiles: z.array(WeaponProfileSchema),
 });
@@ -1030,6 +1040,12 @@ export const GameSystemSchema = z.strictObject({
         ),
     roles: z.record(SlugSchema, RoleSchema),
     unitTypes: z.record(SlugSchema, UnitTypeSchema),
+    subTypes: z
+        .record(SlugSchema, SubTypeSchema)
+        .optional()
+        .describe(
+            'unit sub-types (validator 1.12.0); when set, unit and profile `tags`, `tag:` references and profile filter values that match no sub-type (or unit type) are warnings'
+        ),
     groupTypes: z
         .record(SlugSchema, GroupTypeSchema)
         .describe('group / formation / retinue / team types'),

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.0
+
+- **Sub-type records.** A game may define `subTypes` next to `unitTypes`, keyed by id, each `{ "id", "name", "description"? }` (the same shape as a unit type): `{ "sergeant": { "id": "sergeant", "name": "Sergeant", "description": "Counts as two models when holding an objective." } }`. `description` holds the rules text every model with the sub-type follows, as a unit type's `description` does for its type. Units and profiles still carry sub-types as `tags`, which match a sub-type by name, case-insensitively, or by id (`Gun-crew` → `gun-crew`). `subTypes` is optional.
+- New checks (warnings only, and only when the game defines `subTypes`): a unit or profile tag that matches no sub-type; a `tag:` reference to no sub-type (checked against the game's sub-types instead of the tags the faction uses, so a sub-type no unit has yet is fine); a ProfileFilter `anyOf` / `noneOf` value that is neither a unit type id nor a sub-type. Tags stay free text, so no data has to change. `subTypes` ids must equal their keys (an error, as for every record map).
+- `examples/full` has sub-types for every tag it uses (`line`, `sergeant`, `character`, `unique`, `elite`), some with rules text, and a description on the `infantry` unit type. Two of its profile filters named the `trooper` profile id, which filters never match (they match type and tags); they now read `{ "noneOf": ["Sergeant"] }`. The extension's `militia` is tagged `Line`.
+- `schemaVersion` stays 1 and `expressionVersion` stays 1; everything is additive. Data using `subTypes` needs validator ≥1.12.0 and an app that supports it.
+
 ## 1.11.0
 
 - **A template per weapon profile.** A weapon profile may name its own `template`, replacing the weapon's for that profile, so one weapon can have a ranged and a melee profile: `{ "id": "spear", "template": "ranged", "profiles": [{ "name": "Spear (Thrown)", "stats": { … } }, { "name": "Spear (Melee)", "template": "melee", "stats": { … } }] }`. Each profile's `stats` are checked against its own template. New checks: an unknown profile template is an error; one equal to the weapon's is a warning. The weapon's `template` stays required and is the template of every profile without one.

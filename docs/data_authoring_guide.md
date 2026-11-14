@@ -80,7 +80,8 @@ Required: `id`, `version`, `name`, `roles`, `unitTypes`, `groupTypes`, `resource
 | --- | --- |
 | `terms` | the game's own words per concept (`group`, `root`, `contingent`, `list`, `unit`, `faction`, `subFaction`, `gear`…): `{ "singular", "plural", "word"? }`. A `word` on a built-in scope (`"group": { "word": "formation" }`) can be written in expressions in place of the built-in name. |
 | `roles` | what fills a slot (Troops, Elites). `grants` gives the contingent resources when a slot of that role is filled. |
-| `unitTypes` | Infantry, Vehicle… (matched by `type:` references and selectors). |
+| `unitTypes` | Infantry, Vehicle… (matched by `type:` references and selectors). `description` holds the type's rules text, the rules every unit of the type follows. |
+| `subTypes` | (validator ≥1.12.0, optional) the unit sub-types units and profiles carry as `tags`: `{ "sergeant": { "id": "sergeant", "name": "Sergeant", "description": "…" } }`, with `description` holding the rules every model with the sub-type follows. A tag matches a sub-type by name, case-insensitively, or by id (`Gun-crew` → `gun-crew`). When the game has `subTypes`, a unit or profile tag, a `tag:` reference, or a ProfileFilter value that is not a unit type id and matches no sub-type is a warning. Left out, tags are not checked against anything. |
 | `groupTypes` | kinds of container (group, team, formation). `contingent: "root"` starts a contingent (`source: "main"` or `"ally"`); `contingent: { "linksTo": ["core"] }` attaches to a root group. `min`/`max` limit how many; `cost` is what a group spends. |
 | `slotTags` | tags a slot can carry (`prime`); slot options attach to a tag. `optionLabel` names the options. `color` and `icon` (validator ≥1.5.0) pick the tag's look in the app's palette (`amber`, `red`, `orange`, `green`, `teal`, `blue`, `violet`, `pink`, `slate`; `star`, `spark`, `diamond`, `hex`, `cross`, `flag`, `swords`, `crown`, `fleur`, `circle`, `triangle`, `square`, `target`, `bolt`); left out or unknown, the app picks from the id. |
 | `resources` | anything spent or capped. `scope: "list"` (points, set by the player: `defaultLimit`, `suffix`), `"unit"` (per-unit capacity from a profile stat: `capacityStat`), `"contingent"` (granted and spent within a contingent: `message` is the overspent issue). `usedFor` limits where an amount in it may be given (`unit`, `additionalModels`, `option`, `slotOption`, `group`, `grant`). |
@@ -128,7 +129,7 @@ Required: `id`, `version`, `name`, `game: { "id", "versions" }` and all of `unit
 }
 ```
 
-- `role`, `type` and profile `template` are ids from the game. `tags` are free text, matched case-insensitively (`tag:heavy-assault` for `Heavy Assault`).
+- `role`, `type` and profile `template` are ids from the game. `tags` are free text, matched case-insensitively (`tag:heavy-assault` for `Heavy Assault`); when the game defines `subTypes`, each tag should name one (otherwise a warning), so its rules text comes from the game.
 - `traits` are the unit's traits (a faction trait, "Gun Line"): free text, matched case-insensitively by `trait:` references and selector `traits`. Effects can add, remove or replace them (see Effects).
 - `profiles[].traits` (validator 1.11.0) are traits only that profile's models have, e.g. a Shield trait for the shield-bearers but not their standard bearer: `"traits": ["Shield"]` on the `shield-bearer` profile (`sergeant` and `gunner` in `examples/full`, read by `veterans`' `tower-shields` and `trained-spotters`). A profile sees the unit's traits plus its own (`profile.is(trait:shield)`); the unit counts as holding a trait when any of its profiles does (selector `traits`, `unit.is(trait:…)`, `count(trait:…)`), as with profile `tags`. Put a trait every model has on the unit.
 - `profiles[].id` is what upgrades, default gear and sub-faction rules point at (`profileId`).
@@ -315,7 +316,7 @@ Sub-faction `addUpgrade` doesn't interact with `mirrorOf`: it adds copies of fac
 
 ### Effects
 
-Stat and special-rule changes on profiles chosen by a **ProfileFilter** `{ "anyOf": [...], "noneOf": [...] }` (matched on profile type and tags, the unit's included):
+Stat and special-rule changes on profiles chosen by a **ProfileFilter** `{ "anyOf": [...], "noneOf": [...] }` (matched on profile type and tags, the unit's included, case-insensitively; with game `subTypes`, a value that is neither a unit type id nor a sub-type is a warning):
 
 ```json
 { "kind": "stat", "profiles": { "anyOf": ["infantry"] },

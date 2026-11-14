@@ -33,6 +33,7 @@ export type TermKey = Infer<typeof S.TermKeySchema>;
 export type Term = Infer<typeof S.TermSchema>;
 export type Role = Infer<typeof S.RoleSchema>;
 export type UnitType = Infer<typeof S.UnitTypeSchema>;
+export type SubType = Infer<typeof S.SubTypeSchema>;
 export type GroupType = Infer<typeof S.GroupTypeSchema>;
 export type SlotTag = Infer<typeof S.SlotTagSchema>;
 export type Resource = Infer<typeof S.ResourceSchema>;

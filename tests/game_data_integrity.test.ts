@@ -1171,3 +1171,92 @@ describe('upgrade mirrorOf', () => {
         );
     });
 });
+
+describe('sub-types', () => {
+    const fieldArmy = (set: GameDataSet) => set.factions[0].data;
+    const squad = (set: GameDataSet) => fieldArmy(set).units['squad'];
+    const grenadesWhen = (set: GameDataSet, source: string) => {
+        squad(set).upgrades!['squad-options'].options['grenades'] = {
+            id: 'grenades',
+            name: 'Grenades',
+            cost: { points: 5 },
+            when: { if: source, message: 'Not allowed' },
+        };
+    };
+
+    it('warns on unit and profile tags that match no sub-type, with a hint', async () => {
+        const issues = await issuesAfter((set) => {
+            squad(set).tags = ['Lin'];
+            squad(set).profiles[1].tags = ['Sergeant', 'Drummer'];
+        });
+        assert.deepEqual(issues, [
+            "warning factions/field-army.json units/squad/tags: the tag 'Lin' matches no sub-type (did you mean 'line'?)",
+            "warning factions/field-army.json units/squad/profiles/sergeant/tags: the tag 'Drummer' matches no sub-type",
+        ]);
+    });
+
+    it('matches tags case-insensitively, by name or by id', async () => {
+        const issues = await issuesAfter((set) => {
+            set.game.data.subTypes!['gun-crew'] = {
+                id: 'gun-crew',
+                name: 'Gun-crew',
+            };
+            set.game.data.subTypes!['escort'] = {
+                id: 'escort',
+                name: 'Escort Party',
+            };
+            squad(set).tags = ['LINE', 'gun crew', 'escort party'];
+            squad(set).profiles[1].tags = ['sergeant', 'Escort'];
+        });
+        assert.deepEqual(issues, []);
+    });
+
+    it('checks the sub-type records themselves', async () => {
+        const issues = await issuesAfter((set) => {
+            set.game.data.subTypes!['line'].id = 'rank';
+        });
+        assert.deepEqual(issues, [
+            "error game.json subTypes/line: id is 'rank', but the key is 'line'",
+        ]);
+    });
+
+    it('warns on profile filter values that are neither a unit type nor a sub-type', async () => {
+        const issues = await issuesAfter((set) => {
+            const options = squad(set).upgrades!['heavy-weapons'];
+            options.limitBy![0].profiles = {
+                anyOf: ['Infantry', 'line'],
+                noneOf: ['Sargeant', 'trooper'],
+            };
+        });
+        assert.deepEqual(issues, [
+            "warning factions/field-army.json units/squad/upgrades/heavy-weapons/limitBy/0/profiles: 'Sargeant' matches no unit type or sub-type (did you mean 'sergeant'?)",
+            "warning factions/field-army.json units/squad/upgrades/heavy-weapons/limitBy/0/profiles: 'trooper' matches no unit type or sub-type",
+        ]);
+    });
+
+    it('warns on tag: references to no sub-type, and knows sub-types no unit here has', async () => {
+        assert.deepEqual(
+            await issuesAfter((set) =>
+                grenadesWhen(set, 'unit.is(tag:elite) or unit.is(tag:sergant)')
+            ),
+            [
+                "warning factions/field-army.json units/squad/upgrades/squad-options/options/grenades/when: the game defines no sub-type 'sergant' (did you mean 'sergeant'?)",
+            ]
+        );
+    });
+
+    it('changes nothing when the game defines no sub-types', async () => {
+        const issues = await issuesAfter((set) => {
+            delete set.game.data.subTypes;
+            squad(set).tags = ['Anything'];
+            squad(set).upgrades!['heavy-weapons'].limitBy![0].profiles = {
+                anyOf: ['trooper'],
+            };
+            grenadesWhen(set, 'unit.is(tag:anything) or unit.is(tag:elite)');
+        });
+        // only the existing check: no unit in this faction has `elite`
+        assert.deepEqual(issues, [
+            "warning factions/field-army.json units/squad/upgrades/squad-options/options/grenades/when: no unit or profile has the tag 'elite'",
+        ]);
+    });
+});

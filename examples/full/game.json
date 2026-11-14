@@ -41,8 +41,31 @@
         "heavy": { "id": "heavy", "name": "Heavy" }
     },
     "unitTypes": {
-        "infantry": { "id": "infantry", "name": "Infantry" },
+        "infantry": {
+            "id": "infantry",
+            "name": "Infantry",
+            "description": "Moves through difficult ground without penalty and may hold objectives."
+        },
         "vehicle": { "id": "vehicle", "name": "Vehicle" }
+    },
+    "subTypes": {
+        "line": {
+            "id": "line",
+            "name": "Line",
+            "description": "May re-roll failed morale tests while within 6\" of another Line unit."
+        },
+        "sergeant": {
+            "id": "sergeant",
+            "name": "Sergeant",
+            "description": "Counts as two models when holding an objective."
+        },
+        "character": { "id": "character", "name": "Character" },
+        "unique": {
+            "id": "unique",
+            "name": "Unique",
+            "description": "Only one model with this name may be in a list."
+        },
+        "elite": { "id": "elite", "name": "Elite" }
     },
     "groupTypes": {
         "core": {
