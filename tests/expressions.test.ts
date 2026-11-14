@@ -294,7 +294,9 @@ describe('checker: errors', () => {
                 'unit.has(weapon:rifle)',
                 field(FIELD_SCOPES.groupWhen, 'boolean')
             ),
-            ["'unit' isn't available here (allowed: contingent, list, main, root)"]
+            [
+                "'unit' isn't available here (allowed: contingent, list, main, root)",
+            ]
         );
     });
 
@@ -362,6 +364,25 @@ describe('checker: errors', () => {
         // tags match case-insensitively: `tag:sergeant` finds the `Sergeant` tag
         assert.deepEqual(check('unit.is(tag:sergeant)').diagnostics, []);
         assert.match(errors('unit.is(tag:Sergeant)')[0], /names are lowercase/);
+    });
+
+    it("checks tag: references against the game's sub-types when it has them", () => {
+        const withSubTypes = {
+            ...vocabulary,
+            subTypes: ['line', 'gun-crew'],
+        };
+        const tagWarnings = (source: string) =>
+            checkExpression(source, unitWhen, withSubTypes).diagnostics.map(
+                (d) => `${d.severity}: ${d.message}`
+            );
+        // a sub-type no unit has yet is fine; a used tag that is no sub-type is not
+        assert.deepEqual(tagWarnings('unit.is(tag:gun-crew)'), []);
+        assert.deepEqual(tagWarnings('unit.is(tag:sergeant)'), [
+            "warning: the game defines no sub-type 'sergeant'",
+        ]);
+        assert.deepEqual(tagWarnings('unit.is(tag:lne)'), [
+            "warning: the game defines no sub-type 'lne' (did you mean 'line'?)",
+        ]);
     });
 
     it('warns (not errors) on unknown traits, and keeps unit.count to gear', () => {

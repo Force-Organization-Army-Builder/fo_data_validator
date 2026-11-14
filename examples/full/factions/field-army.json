@@ -141,7 +141,7 @@
                             "kind": "weapon",
                             "id": "rifle",
                             "count": 0.2,
-                            "profiles": { "anyOf": ["trooper"] }
+                            "profiles": { "noneOf": ["Sergeant"] }
                         }
                     ],
                     "options": {
@@ -204,7 +204,7 @@
                                             "value": "5+"
                                         }
                                     ],
-                                    "profiles": { "anyOf": ["trooper"] }
+                                    "profiles": { "noneOf": ["Sergeant"] }
                                 },
                                 {
                                     "kind": "specialRule",

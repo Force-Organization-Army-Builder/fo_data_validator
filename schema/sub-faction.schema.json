@@ -108,7 +108,7 @@
                         "$ref": "#/definitions/__schema3"
                     },
                     "tags": {
-                        "description": "keywords and sub-types, matched by `tag:` references and profile filters",
+                        "description": "keywords and sub-types, matched by `tag:` references and profile filters; free text, though when the game defines `subTypes` a tag that matches none is a warning",
                         "allOf": [
                             {
                                 "$ref": "#/definitions/__schema6"

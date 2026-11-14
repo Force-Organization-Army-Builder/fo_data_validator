@@ -67,7 +67,9 @@ A game could equally map `unit` to "squad" or `list` and `group` to "team". Keys
 
 ### 3.2 Roles and unit types
 
-Records: `{ "troop": { "id": "troop", "name": "Troops" } }`.
+Records: `{ "troop": { "id": "troop", "name": "Troops" } }`. A unit type's `description` holds the rules every unit of the type follows.
+
+From validator 1.12.0 a game may also define `subTypes`, records of the same shape (`{ "sergeant": { "id": "sergeant", "name": "Sergeant", "description": "…" } }`), whose `description` holds the rules every model with the sub-type follows. Units and profiles carry sub-types as `tags`, matched by name case-insensitively or by id (`Gun-crew` → `gun-crew`). Tags stay free text; when `subTypes` is set, a unit or profile tag, a `tag:` reference or a ProfileFilter value (that isn't a unit type id) matching no sub-type is a warning, never an error. Without `subTypes`, nothing changes.
 
 ### 3.3 Group types and contingents
 
@@ -244,7 +246,7 @@ A contingent may take **several sub-factions of its faction**: one pick per inde
 }
 ```
 
-- `role` and `type` are game ids; `tags` (on units and profiles) are matched by `tag:` references and profile filters.
+- `role` and `type` are game ids; `tags` (on units and profiles) are matched by `tag:` references and profile filters, and checked against the game's `subTypes` when it has them (§3.2).
 - Profiles always have an `id` and a `template`.
 - `excludeProfiles` (a `ProfileFilter`) leaves profiles out of default gear and per-model config. `perModel` with a `profileId` gives one to each model of that profile.
 - A `defaultGear` entry's **`note`** (validator 1.11.0) is a short text shown next to that gear, e.g. its mount (§6, gear notes).

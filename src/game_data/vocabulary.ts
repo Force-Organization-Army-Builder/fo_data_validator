@@ -2,7 +2,7 @@ import type {
     ExpressionVocabulary,
     BuiltInScope,
 } from '../expressions/checker';
-import { BUILT_IN_SCOPES } from '../expressions/checker';
+import { BUILT_IN_SCOPES, tagId } from '../expressions/checker';
 import type {
     Faction,
     FactionRecords,
@@ -25,6 +25,22 @@ export function scopeWords(game: GameSystem): Record<string, BuiltInScope> {
         }
     }
     return words;
+}
+
+/**
+ * The game's sub-types as the `tagId` forms a tag may match them by (each
+ * one's id and name), or undefined when the game defines no `subTypes`
+ */
+export function subTypeTags(game: GameSystem): Array<string> | undefined {
+    if (!game.subTypes) return undefined;
+    return [
+        ...new Set(
+            Object.values(game.subTypes).flatMap((s) => [
+                tagId(s.id),
+                tagId(s.name),
+            ])
+        ),
+    ];
 }
 
 /* Unit and profile tags used anywhere in the records */
@@ -121,6 +137,7 @@ export function buildVocabulary(
         selectors: [...keys(game.selectors), ...all('selectors')],
         slotTags: keys(game.slotTags),
         tags: tagsOf(records),
+        subTypes: subTypeTags(game),
         traits: traitsOf([game, ...records, ...factions, ...subFactions]),
         resources: Object.fromEntries(
             Object.values(game.resources).map((r) => [r.id, r.scope])

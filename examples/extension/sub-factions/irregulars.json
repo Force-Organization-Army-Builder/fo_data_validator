@@ -9,7 +9,7 @@
             "name": "Militia",
             "role": "troop",
             "type": "infantry",
-            "tags": ["Rabble"],
+            "tags": ["Line"],
             "cost": { "points": 60 },
             "modelCount": 10,
             "profiles": [
