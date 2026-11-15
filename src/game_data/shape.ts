@@ -29,9 +29,7 @@ const join = (path: ReadonlyArray<PropertyKey>) =>
     path.map((part) => String(part)).join('/');
 
 /* The issues of a union's best branch: the one that got furthest, i.e. has the fewest problems */
-function bestBranch(issue: Issue & { code: 'invalid_union' }): Array<Issue> {
-    const branches = issue.errors as unknown as Array<Array<Issue>>;
-    if (!branches?.length) return [issue];
+function bestBranch(branches: Array<Array<Issue>>): Array<Issue> {
     return branches.reduce((best, branch) =>
         branch.length < best.length ? branch : best
     );
@@ -44,8 +42,15 @@ function describe(
 ): Array<{ path: string; message: string }> {
     const path = [...prefix, ...issue.path];
     switch (issue.code) {
-        case 'invalid_union':
-            return bestBranch(issue).flatMap((inner) => describe(inner, path));
+        case 'invalid_union': {
+            const branches = issue.errors as unknown as Array<Array<Issue>>;
+            // a discriminated union with an unknown discriminator has no branches
+            if (!branches?.length)
+                return [{ path: join(path), message: issue.message }];
+            return bestBranch(branches).flatMap((inner) =>
+                describe(inner, path)
+            );
+        }
         case 'unrecognized_keys':
             return issue.keys.map((key) => ({
                 path: join([...path, key]),

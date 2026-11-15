@@ -83,6 +83,24 @@ describe('checkShapes', () => {
         );
     });
 
+    it('reports an unknown effect kind (a discriminator no branch matches)', async () => {
+        const issues = await issuesAfter('squad', (u) => {
+            const upgrades = u.upgrades as Record<
+                string,
+                { options: Record<string, Record<string, unknown>> }
+            >;
+            upgrades['squad-options'].options['grenades'] = {
+                id: 'grenades',
+                name: 'Grenades',
+                cost: { points: 5 },
+                effects: [{ kind: 'stats', changes: [] }],
+            };
+        });
+        assert.deepEqual(issues, [
+            "units/squad/upgrades/squad-options/options/grenades/effects/0/kind: Invalid discriminator value. Expected 'stat' | 'specialRule' | 'trait'",
+        ]);
+    });
+
     it('reports an unknown key', async () => {
         const issues = await issuesAfter(
             'squad',
@@ -96,6 +114,59 @@ describe('checkShapes', () => {
         assert.deepEqual(issues, [
             "units/carrier: missing required property 'modelCount'",
         ]);
+    });
+
+    it('takes effects and units on list choice values', async () => {
+        const choiceIssues = async (
+            change: (values: Record<string, Record<string, unknown>>) => void
+        ) => {
+            const all = await files();
+            const game = all.find((f) => f.kind === 'GameSystem')!;
+            change(
+                (
+                    game.data as {
+                        choices: Record<
+                            string,
+                            { values: Record<string, Record<string, unknown>> }
+                        >;
+                    }
+                ).choices['stance'].values
+            );
+            return checkShapes(all).map((i) => `${i.path}: ${i.message}`);
+        };
+        // the example's offensive and defensive values carry both
+        assert.deepEqual(await choiceIssues(() => {}), []);
+        assert.deepEqual(
+            await choiceIssues((v) => {
+                v['offensive'].units = { roles: ['troop'] };
+                v['defensive'].effects = [
+                    { kind: 'specialRule', rule: { id: 'disciplined' } },
+                ];
+            }),
+            []
+        );
+
+        const at = 'choices/stance/values/offensive';
+        for (const [change, path] of [
+            [(v: Record<string, unknown>) => (v.units = 3), `${at}/units`],
+            [
+                (v: Record<string, unknown>) =>
+                    (v.effects = [{ kind: 'allowedRoles', roles: ['heavy'] }]),
+                `${at}/effects/0/kind`,
+            ],
+            [
+                (v: Record<string, unknown>) =>
+                    (v.effects = { kind: 'trait', add: ['X'] }),
+                `${at}/effects`,
+            ],
+            [(v: Record<string, unknown>) => (v.efects = []), `${at}/efects`],
+        ] as const) {
+            const issues = await choiceIssues((v) => change(v['offensive']));
+            assert.ok(
+                issues.some((i) => i.startsWith(`${path}: `)),
+                issues.join('\n')
+            );
+        }
     });
 
     it('checks sub-faction groups', async () => {

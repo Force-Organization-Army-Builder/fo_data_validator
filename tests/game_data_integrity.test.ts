@@ -1260,3 +1260,82 @@ describe('sub-types', () => {
         ]);
     });
 });
+
+describe('list choice value effects', () => {
+    const values = (set: GameDataSet) =>
+        set.game.data.choices!['stance'].values;
+    const at = 'game.json choices/stance/values';
+
+    it('accepts the example: a trait for line troops, a stat change and a conditional trait', async () => {
+        assert.deepEqual(await issuesAfter(() => {}), []);
+    });
+
+    it('checks the effects like group effects', async () => {
+        const issues = await issuesAfter((set) => {
+            values(set)['offensive'].effects = [
+                {
+                    kind: 'stat',
+                    changes: [{ stat: 'moral', op: 'add', value: 1 }],
+                },
+                { kind: 'specialRule', rule: { id: 'disciplind' } },
+                { kind: 'trait' },
+                {
+                    kind: 'trait',
+                    add: ['Zealous'],
+                    when: {
+                        if: 'profile.is(tag:sergeant)',
+                        message: 'Sergeants only',
+                    },
+                },
+                {
+                    kind: 'stat',
+                    changes: [{ stat: 'morale', op: 'add', value: 1 }],
+                    when: { if: 'choice(stance) == offensiv', message: '' },
+                },
+            ];
+        });
+        assert.deepEqual(issues, [
+            `error ${at}/offensive/effects/0: unknown stat 'moral'`,
+            `error ${at}/offensive/effects/1: unknown special rule 'disciplind'`,
+            `error ${at}/offensive/effects/2: a trait effect needs add, remove or replace`,
+            `error ${at}/offensive/effects/3/when: 'profile' isn't available here (allowed: contingent, group, list, main, root, slot, unit)`,
+            `error ${at}/offensive/effects/4/when: a condition needs a message for players`,
+            `error ${at}/offensive/effects/4/when: 'offensiv' isn't a value of stance (did you mean 'offensive'?)`,
+        ]);
+    });
+
+    it('checks the units selector', async () => {
+        const issues = await issuesAfter((set) => {
+            values(set)['offensive'].units = '@line-trops';
+            values(set)['defensive'].units = {
+                roles: ['trop'],
+                traits: ['Nobody Has This'],
+            };
+        });
+        assert.deepEqual(issues, [
+            `error ${at}/offensive/units: unknown selector 'line-trops'`,
+            `error ${at}/defensive/units: unknown role 'trop'`,
+            `warning ${at}/defensive/units: no unit has or is given the trait 'Nobody Has This'`,
+        ]);
+    });
+
+    it('warns about units without effects', async () => {
+        const issues = await issuesAfter((set) => {
+            delete values(set)['offensive'].effects;
+        });
+        assert.deepEqual(issues, [
+            `warning ${at}/offensive/units: units has no effect without effects`,
+        ]);
+    });
+
+    it('makes the traits it gives known to selectors and trait: references', async () => {
+        const issues = await issuesAfter((set) => {
+            set.factions[0].data.selectors!['assault'] = {
+                id: 'assault',
+                name: 'Assault troops',
+                match: { traits: ['assault troops', 'Dug In'] },
+            };
+        });
+        assert.deepEqual(issues, []);
+    });
+});

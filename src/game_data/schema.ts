@@ -407,14 +407,37 @@ export const StatTemplateSchema = z.strictObject({
     stats: z.array(StatDefinitionSchema),
 });
 
+export const ListChoiceValueEffectSchema = z
+    .discriminatedUnion('kind', [
+        StatEffectSchema,
+        SpecialRuleEffectSchema,
+        TraitEffectSchema,
+    ])
+    .describe(
+        "applied to every matching unit in the list while the value is picked, right after the unit's own traits and sub-faction modifiers; the pick is already the condition, so a `when` needs no `choice()`"
+    );
+
+export const ListChoiceValueSchema = z
+    .strictObject({
+        ...named,
+        id: SlugSchema,
+        units: UnitSelectorOrRefSchema.optional().describe(
+            "the units `effects` apply to, seen with their own traits and sub-faction modifiers (validator 1.13.0); left out = every unit in the list, allies included"
+        ),
+        effects: z
+            .array(ListChoiceValueEffectSchema)
+            .optional()
+            .describe(
+                'stat, special-rule and trait effects on every matching unit in the list while this value is picked (validator 1.13.0), e.g. a stance value giving every unit a trait'
+            ),
+    })
+    .describe("One of a list choice's values");
+
 export const ListChoiceSchema = z
     .strictObject({
         ...named,
         id: SlugSchema,
-        values: z.record(
-            SlugSchema,
-            z.strictObject({ ...named, id: SlugSchema })
-        ),
+        values: z.record(SlugSchema, ListChoiceValueSchema),
         default: SlugSchema.optional(),
     })
     .describe('A list-level choice, e.g. stance or battle size');

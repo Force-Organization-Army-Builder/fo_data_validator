@@ -63,7 +63,8 @@ type TraitSource = Partial<
         'units' | 'upgrades' | 'groups' | 'slotOptions' | 'specialRules'
     >
 > &
-    Partial<Pick<SubFaction, 'unitModifiers'>>;
+    Partial<Pick<SubFaction, 'unitModifiers'>> &
+    Partial<Pick<GameSystem, 'choices'>>;
 
 /* Traits units have or trait effects give, anywhere in the sources */
 function traitsOf(sources: Array<TraitSource>) {
@@ -102,6 +103,9 @@ function traitsOf(sources: Array<TraitSource>) {
             for (const slot of r.slots ?? []) slot.effects?.forEach(fromEffect);
         for (const m of Object.values(s.unitModifiers ?? {}))
             m.actions.forEach(fromEffect);
+        for (const c of Object.values(s.choices ?? {}))
+            for (const v of Object.values(c.values))
+                v.effects?.forEach(fromEffect);
     }
     return [...traits];
 }
