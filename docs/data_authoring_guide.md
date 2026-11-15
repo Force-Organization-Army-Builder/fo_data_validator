@@ -86,7 +86,7 @@ Required: `id`, `version`, `name`, `roles`, `unitTypes`, `groupTypes`, `resource
 | `slotTags` | tags a slot can carry (`prime`); slot options attach to a tag. `optionLabel` names the options. `color` and `icon` (validator ≥1.5.0) pick the tag's look in the app's palette (`amber`, `red`, `orange`, `green`, `teal`, `blue`, `violet`, `pink`, `slate`; `star`, `spark`, `diamond`, `hex`, `cross`, `flag`, `swords`, `crown`, `fleur`, `circle`, `triangle`, `square`, `target`, `bolt`); left out or unknown, the app picks from the id. |
 | `resources` | anything spent or capped. `scope: "list"` (points, set by the player: `defaultLimit`, `suffix`), `"unit"` (per-unit capacity from a profile stat: `capacityStat`), `"contingent"` (granted and spent within a contingent: `message` is the overspent issue). `usedFor` limits where an amount in it may be given (`unit`, `additionalModels`, `option`, `slotOption`, `group`, `grant`). |
 | `stats` | `unit` and `weapon` stat templates: `{ "id", "name", "stats": [{ "id", "label", "numeric"? }] }`. A numeric stat can be shifted by effects (`3+` −1 → `2+`). |
-| `choices` | list-level choices (stance, battle size): `{ "id", "name", "values": {...}, "default"? }`. Read in expressions with `choice(id)`. |
+| `choices` | list-level choices (stance, battle size): `{ "id", "name", "values": {...}, "default"? }`. Read in expressions with `choice(id)`. A value may have `effects` and `units` (validator ≥1.13.0, see Effects): while it is picked, its effects apply to every matching unit in the list. |
 | `listRules` | typed list-wide rules (below). |
 | `groups` | groups every faction may take. |
 | `specialRules`, `selectors`, `slotOptions`, `subChoices` | shared versions of the faction records of the same name. |
@@ -335,7 +335,27 @@ A **trait effect** changes the unit's traits. Traits belong to the whole unit, s
 
 `replace` removes any of `from` and adds `to` only if the unit had one of them ("models replace their X trait with Y").
 
-Effects appear on `Option.effects`, slot options, sub-faction unit modifiers and groups (`effects`). `when` on an effect holds it back until true. The app applies them in this order: the unit's own traits, sub-faction unit modifiers, options, the group, the slot's own `effects`, slot options. Each step's `when` sees the result of the earlier steps.
+Effects appear on `Option.effects`, slot options, sub-faction unit modifiers, groups (`effects`) and list choice values (`effects`). `when` on an effect holds it back until true. The app applies them in this order: the unit's own traits, sub-faction unit modifiers, list choice values, options, the group, the slot's own `effects`, slot options. Each step's `when` sees the result of the earlier steps.
+
+**List choice values** (validator ≥1.13.0) give effects to every unit in the list while the value is picked, for rules such as "in a Defensive list, every unit has the Dug In trait":
+
+```json
+"stance": {
+    "id": "stance",
+    "name": "Stance",
+    "values": {
+        "offensive": { "id": "offensive", "name": "Offensive",
+                       "effects": [{ "kind": "trait", "add": ["Assault Troops"] }] },
+        "defensive": { "id": "defensive", "name": "Defensive",
+                       "effects": [{ "kind": "trait", "add": ["Dug In"] }] }
+    }
+}
+```
+
+- `units` (a selector or `@ref`) limits which units get them, e.g. `"units": { "profiles": { "anyOf": ["infantry"] } }`; left out, every unit in the list does, in every contingent, allies included. It sees the unit with its own traits and sub-faction modifiers.
+- The value being picked is already the condition, so don't add `when: choice(stance) == defensive`; a `when` is allowed for anything further.
+- They apply before options and the group, so a group's `units` selector or an option's `when` can read the trait (`unit.is(trait:dug-in)`).
+- `examples/full`'s `stance` gives `@line-troops` the Assault Troops trait when offensive, and every infantry profile +1 Morale (and units of 5 or more the Dug In trait) when defensive.
 
 ### Groups
 

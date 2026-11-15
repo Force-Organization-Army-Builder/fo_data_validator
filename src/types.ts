@@ -41,6 +41,10 @@ export type CostTarget = Infer<typeof S.CostTargetSchema>;
 export type StatTemplate = Infer<typeof S.StatTemplateSchema>;
 export type StatDefinition = Infer<typeof S.StatDefinitionSchema>;
 export type ListChoice = Infer<typeof S.ListChoiceSchema>;
+export type ListChoiceValue = Infer<typeof S.ListChoiceValueSchema>;
+export type ListChoiceValueEffect = Infer<
+    typeof S.ListChoiceValueEffectSchema
+>;
 
 export type ListRule = Infer<typeof S.ListRuleSchema>;
 export type ResourceCapRule = Infer<typeof S.ResourceCapRuleSchema>;

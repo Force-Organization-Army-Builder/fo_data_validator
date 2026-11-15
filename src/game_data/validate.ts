@@ -23,6 +23,7 @@ import type {
     Option,
     CostTarget,
     CompositionBlock,
+    ListChoice,
     ListRule,
     SlotOption,
     SlotSource,
@@ -488,6 +489,7 @@ class Validator {
         }
 
         this.listRules(game.listRules, scope);
+        this.choiceEffects(game.choices, scope);
 
         // contingent resources: roles grant them, group types cost them
         for (const role of Object.values(game.roles))
@@ -1890,6 +1892,36 @@ class Validator {
     }
 
     /* typed and expression list rules, in the game or a faction or sub-faction */
+    /*
+     * A list choice value's effects reach every matching unit in the list, from
+     * any faction, so they're checked like the game's own groups' effects
+     */
+    private choiceEffects(
+        choices: Record<string, ListChoice> | undefined,
+        scope: Scope
+    ) {
+        for (const choice of Object.values(choices ?? {})) {
+            for (const value of Object.values(choice.values)) {
+                const at = `choices/${choice.id}/values/${value.id}`;
+                this.selector(`${at}/units`, value.units, scope);
+                if (value.units && !value.effects?.length)
+                    this.report(
+                        `${at}/units`,
+                        'units has no effect without effects',
+                        'warning'
+                    );
+                value.effects?.forEach((effect, i) =>
+                    this.effect(
+                        `${at}/effects/${i}`,
+                        effect,
+                        scope,
+                        FIELD_SCOPES.effect
+                    )
+                );
+            }
+        }
+    }
+
     private listRules(
         rules: Record<string, ListRule> | undefined,
         scope: Scope

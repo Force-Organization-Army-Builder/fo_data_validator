@@ -157,6 +157,8 @@ Data that uses a weapon profile's own `template`, a unit profile's `traits`, or 
 
 Data that uses game `subTypes` needs validator **1.12.0** or later, and an app that supports them.
 
+Data that uses `effects` or `units` on a list choice's values needs validator **1.13.0** or later, and an app that supports them.
+
 ## Releasing
 
 1. Make sure `npm test`, `npm run type-check`, `npm run lint`, `npm run generate-schema -- --check` and `npm run validate-data` pass (CI runs them).

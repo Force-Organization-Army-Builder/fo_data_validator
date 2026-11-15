@@ -190,8 +190,28 @@
             "id": "stance",
             "name": "Stance",
             "values": {
-                "offensive": { "id": "offensive", "name": "Offensive" },
-                "defensive": { "id": "defensive", "name": "Defensive" }
+                "offensive": {
+                    "id": "offensive",
+                    "name": "Offensive",
+                    "units": "@line-troops",
+                    "effects": [{ "kind": "trait", "add": ["Assault Troops"] }]
+                },
+                "defensive": {
+                    "id": "defensive",
+                    "name": "Defensive",
+                    "effects": [
+                        {
+                            "kind": "stat",
+                            "profiles": { "anyOf": ["infantry"] },
+                            "changes": [{ "stat": "morale", "op": "add", "value": 1, "max": 10 }]
+                        },
+                        {
+                            "kind": "trait",
+                            "add": ["Dug In"],
+                            "when": { "if": "unit.models() >= 5", "message": "Only units of 5 or more models dig in" }
+                        }
+                    ]
+                }
             },
             "default": "offensive"
         }

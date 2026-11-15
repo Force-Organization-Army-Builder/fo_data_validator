@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.13.0
+
+- **Effects on list choice values.** A list choice's value may carry `effects` (stat, special-rule and trait effects, as on a group) and a `units` selector (or `@ref`): while the value is picked, its effects apply to every matching unit in the list, in every contingent, allies included (`units` left out = every unit). For a stance that gives every unit a trait: `"defensive": { "id": "defensive", "name": "Defensive", "effects": [{ "kind": "trait", "add": ["Dug In"] }] }`, replacing a trait effect with `when: choice(stance) == defensive` repeated in every group. The pick is the condition, so no `choice()` is needed; a `when` is still allowed.
+- **Order.** In a played unit, choice value effects apply right after the resolved faction unit (its own traits and sub-faction unit modifiers) and before option effects, then the group's, the slot's and slot options'. `units` sees the resolved faction unit; a group's `units` selector and later `when`s see the traits a choice gives.
+- New checks, as for group effects: unknown stats, special rules and selector refs, empty trait effects, `when` expressions (scopes `profile`, except on trait effects, `unit`, `slot`, `group`, `contingent`, `root`, `main`, `list`) and profile filters; `units` without `effects` is a warning. Traits a choice gives are known to selector `traits` and `trait:` references.
+- Fix: the shape check no longer overflows the stack on an effect (or other discriminated union) with an unknown `kind`; it reports the expected kinds.
+- `examples/full`'s `stance` values carry effects: `offensive` gives `@line-troops` the Assault Troops trait; `defensive` gives infantry profiles +1 Morale and units of 5 or more models the Dug In trait.
+- `schemaVersion` stays 1 and `expressionVersion` stays 1; everything is additive. Data using choice value effects needs validator ≥1.13.0 and an app that supports them.
+
 ## 1.12.0
 
 - **Sub-type records.** A game may define `subTypes` next to `unitTypes`, keyed by id, each `{ "id", "name", "description"? }` (the same shape as a unit type): `{ "sergeant": { "id": "sergeant", "name": "Sergeant", "description": "Counts as two models when holding an objective." } }`. `description` holds the rules text every model with the sub-type follows, as a unit type's `description` does for its type. Units and profiles still carry sub-types as `tags`, which match a sub-type by name, case-insensitively, or by id (`Gun-crew` → `gun-crew`). `subTypes` is optional.
