@@ -169,6 +169,88 @@ describe('checkShapes', () => {
         }
     });
 
+    const badIds = [
+        'Infantry-squad',
+        'infantry squad',
+        '-squad',
+        'squad-',
+        'infantry--squad',
+        '',
+    ];
+
+    it('rejects a record key that is not a lowercase kebab-case id', async () => {
+        for (const bad of badIds) {
+            const all = await files();
+            const faction = all.find((f) => f.kind === 'Faction')!;
+            const units = (faction.data as { units: Record<string, unknown> })
+                .units;
+            units[bad] = structuredClone(units['squad']);
+            const issues = checkShapes(all).map(
+                (i) => `${i.path}: ${i.message}`
+            );
+            assert.equal(issues.length, 1, issues.join('\n'));
+            assert.ok(
+                issues[0].startsWith(
+                    `units/${bad}: invalid key '${bad}': ids are lowercase kebab-case`
+                ) && issues[0].includes('`infantry-squad`'),
+                issues[0]
+            );
+        }
+    });
+
+    it('rejects an id value that is not a lowercase kebab-case id', async () => {
+        for (const bad of badIds) {
+            const issues = await issuesAfter('squad', (u) => (u.id = bad));
+            assert.equal(issues.length, 1, issues.join('\n'));
+            assert.match(
+                issues[0],
+                /^units\/squad\/id: ids are lowercase kebab-case.*`infantry-squad`/
+            );
+        }
+    });
+
+    it('rejects a selector reference to a malformed id', async () => {
+        for (const bad of ['@Vehicles', '@', 'vehicles', '@-vehicles']) {
+            const all = await files();
+            const game = all.find((f) => f.kind === 'GameSystem')!;
+            (
+                game.data as {
+                    listRules: Record<string, Record<string, unknown>>;
+                }
+            ).listRules['fixed-cap'].units = bad;
+            const issues = checkShapes(all).map(
+                (i) => `${i.path}: ${i.message}`
+            );
+            assert.deepEqual(
+                issues,
+                [
+                    "listRules/fixed-cap/units: a selector reference is '@' followed by a selector id; ids are lowercase kebab-case: letters a-z and digits, with single hyphens between words, e.g. `infantry-squad`",
+                ],
+                bad
+            );
+        }
+    });
+
+    it('checks term words against the names expressions accept', async () => {
+        const termIssues = async (word: string) => {
+            const all = await files();
+            const game = all.find((f) => f.kind === 'GameSystem')!;
+            (
+                game.data as { terms: Record<string, Record<string, unknown>> }
+            ).terms['group'].word = word;
+            return checkShapes(all).map((i) => `${i.path}: ${i.message}`);
+        };
+        assert.deepEqual(await termIssues('battle-group'), []);
+        for (const bad of ['2nd-group', 'Group', 'battle--group']) {
+            const issues = await termIssues(bad);
+            assert.equal(issues.length, 1, bad);
+            assert.match(
+                issues[0],
+                /^terms\/group\/word: .*start with a letter/
+            );
+        }
+    });
+
     it('checks sub-faction groups', async () => {
         const all = await files();
         const faction = all.find((f) => f.kind === 'Faction')!;

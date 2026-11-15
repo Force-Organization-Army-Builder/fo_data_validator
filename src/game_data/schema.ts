@@ -21,7 +21,30 @@ import { z } from 'zod';
  * first save and permanent after that. Unique per kind within its faction (or
  * game); every record's `id` equals its key.
  */
-export const SlugSchema = z.string();
+export const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+export const SLUG_RULE =
+    'ids are lowercase kebab-case: letters a-z and digits, with single hyphens between words, e.g. `infantry-squad`';
+
+export const SlugSchema = z
+    .string()
+    .regex(SLUG_PATTERN, SLUG_RULE)
+    .describe(
+        'A record id: lowercase kebab-case, e.g. `infantry-squad` (letters a-z and digits, with single hyphens between words)'
+    );
+
+/*
+ * A word written as a scope or kind name in expressions: like an id, but it
+ * starts with a letter, as names do in the expression lexer.
+ */
+export const NAME_PATTERN = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
+
+export const ExpressionWordSchema = z
+    .string()
+    .regex(
+        NAME_PATTERN,
+        'words written in expressions are lowercase kebab-case and start with a letter, e.g. `formation`'
+    );
 
 export const ExprSchema = z
     .string()
@@ -114,7 +137,9 @@ export const UnitSelectorSchema = z
     );
 
 export const SelectorRefSchema = z
-    .templateLiteral(['@', z.string()])
+    .templateLiteral(['@', SlugSchema], {
+        error: `a selector reference is '@' followed by a selector id; ${SLUG_RULE}`,
+    })
     .describe(
         'A named selector by id, accepted wherever a `UnitSelector` is, e.g. `"@line-infantry"`'
     );
@@ -273,7 +298,7 @@ export const TERM_KEYS = [
 export const TermKeySchema = z.enum(TERM_KEYS);
 
 export const TermSchema = z.strictObject({
-    word: SlugSchema.optional().describe(
+    word: ExpressionWordSchema.optional().describe(
         'For built-in scopes (and `group` as a reference kind): the word data authors may write in expressions instead of the built-in name, e.g. `formation` for `group`'
     ),
     singular: z.string(),
@@ -422,7 +447,7 @@ export const ListChoiceValueSchema = z
         ...named,
         id: SlugSchema,
         units: UnitSelectorOrRefSchema.optional().describe(
-            "the units `effects` apply to, seen with their own traits and sub-faction modifiers (validator 1.13.0); left out = every unit in the list, allies included"
+            'the units `effects` apply to, seen with their own traits and sub-faction modifiers (validator 1.13.0); left out = every unit in the list, allies included'
         ),
         effects: z
             .array(ListChoiceValueEffectSchema)

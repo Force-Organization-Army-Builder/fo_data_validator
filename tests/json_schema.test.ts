@@ -43,6 +43,62 @@ describe('generated JSON Schema', () => {
     });
 });
 
+describe('generated JSON Schema ids', () => {
+    const slug = '^[a-z0-9]+(?:-[a-z0-9]+)*$';
+    const all = () =>
+        jsonSchemas(packageMajor()).map(({ file, json }) => ({
+            file,
+            text: JSON.stringify(json),
+        }));
+
+    it('gives every id the kebab-case pattern', () => {
+        const game = all().find((s) => s.file === 'game.schema.json')!;
+        assert.ok(game.text.includes(JSON.stringify(slug)), 'slug pattern');
+    });
+
+    it('checks every record key with propertyNames', () => {
+        type Node = { [key: string]: unknown };
+        for (const { file, json } of jsonSchemas(packageMajor())) {
+            const definitions = ((json as Node).definitions ?? {}) as Record<
+                string,
+                Node
+            >;
+            const resolve = (node: Node): Node =>
+                typeof node.$ref === 'string'
+                    ? resolve(definitions[node.$ref.split('/').at(-1)!])
+                    : node;
+            const found: Array<Node> = [];
+            const walk = (node: unknown) => {
+                if (!node || typeof node !== 'object') return;
+                const n = node as Node;
+                if (n.propertyNames)
+                    found.push(resolve(n.propertyNames as Node));
+                Object.values(n).forEach(walk);
+            };
+            walk(json);
+            if (file === 'source-manifest.schema.json') continue;
+            assert.ok(found.length > 0, file);
+            // keys are ids, apart from fixed sets of keys (term names)
+            for (const names of found)
+                assert.ok(
+                    names.pattern === slug || Array.isArray(names.enum),
+                    `${file}: ${JSON.stringify(names)}`
+                );
+            assert.ok(
+                found.some((names) => names.pattern === slug),
+                file
+            );
+        }
+    });
+
+    it('checks selector references', () => {
+        const game = all().find((s) => s.file === 'game.schema.json')!;
+        assert.ok(
+            game.text.includes(JSON.stringify('^@[a-z0-9]+(?:-[a-z0-9]+)*$'))
+        );
+    });
+});
+
 describe('shape check of whole sources', () => {
     it('accepts every example source', async () => {
         const entries = await fs.readdir(path.join(root, 'examples'), {
@@ -110,7 +166,9 @@ describe('shape check of whole sources', () => {
         });
         assert.deepEqual(
             issues.map((issue) => `${issue.path}: ${issue.message}`),
-            ["provide: unknown property 'provide'"]
+            [
+                "provide: unknown property 'provide' (misspelt, or a field from a newer validator release)",
+            ]
         );
     });
 });

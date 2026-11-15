@@ -371,7 +371,9 @@
             }
         },
         "__schema3": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "description": "A record id: lowercase kebab-case, e.g. `infantry-squad` (letters a-z and digits, with single hyphens between words)"
         },
         "__schema4": {
             "type": "string"
@@ -1662,7 +1664,7 @@
                 },
                 {
                     "type": "string",
-                    "pattern": "^@[\\s\\S]{0,}$",
+                    "pattern": "^@[a-z0-9]+(?:-[a-z0-9]+)*$",
                     "description": "A named selector by id, accepted wherever a `UnitSelector` is, e.g. `\"@line-infantry\"`"
                 }
             ]
