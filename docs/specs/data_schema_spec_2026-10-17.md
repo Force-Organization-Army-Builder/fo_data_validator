@@ -15,7 +15,7 @@ Every example source passes the shape check and the data checker (`npm run valid
 ## 1. Principles
 
 1. **The validator ships no game data.** Everything below lives in public data sources (§2).
-2. **Readable, permanent ids.** Record ids are slugs (`infantry-squad`), created from the name on first save and never changed after; every record's `id` equals its key. Ids are unique per kind within a faction (or game).
+2. **Readable, permanent ids.** Record ids are slugs (`infantry-squad`), created from the name on first save and never changed after; every record's `id` equals its key. Ids are unique per kind within a faction (or game). A slug is lowercase kebab-case, `^[a-z0-9]+(?:-[a-z0-9]+)*$`: letters a-z and digits, with single hyphens between words. That is the id rule of the expression language (expression spec §4), so every id can be referenced from an expression. The shape check enforces it on every id, every reference to one, every record key and every `@selector` reference (since validator 1.14.0).
 3. **The game defines its vocabulary.** Roles, unit types, group types, slot tags, resources, stat templates, list choices and the words players see all come from the game definition. Nothing game-specific is built in: tagged slots, root formations and contingent points are all configured data.
 4. **Typed first, expressions as the escape hatch.** Recurring rule shapes have typed forms; expressions fill gaps (`when`, `min`, `max`, cost values).
 5. **Every rule carries a player-facing message.** Expression conditions are `{ "if": …, "message": … }`; typed rules have a `message` or a generated one.
@@ -27,6 +27,8 @@ A source is any public repo or static URL with a `forceorg.json` manifest at its
 ```json
 {
     "schemaVersion": 1,
+    "expressionVersion": 1,
+    "minValidatorVersion": "1.14.0",
     "name": "Full coverage test source",
     "disclaimer": "Test data only.",
     "provides": [
@@ -44,6 +46,8 @@ A source is any public repo or static URL with a `forceorg.json` manifest at its
 - **`extends`** adds to a game defined elsewhere, by game id and version range (`examples/extension/forceorg.json`). The extension binds to a loaded source that provides that game; the user picks if several do.
 - **`examples`** lists example lists the checker runs (§10).
 - **`schemaVersion`** is this schema's version and **`expressionVersion`** the expression language's; consumers refuse sources newer than they understand (expression spec §14).
+- **`minValidatorVersion`** (optional) is the oldest validator release that understands the source, exactly `major.minor.patch`. Additive fields arrive in minor releases while `schemaVersion` stays put, so this is how a source says it uses one: an older validator refuses the source with "this source needs validator X or newer, but this is Y; update" instead of reporting the newer fields as unknown. Set it to the release that added the newest feature the source uses. Validators before 1.14.0 don't know the field and reject it as an unknown property, so it only helps from 1.14.0 on, and a value below `1.14.0` is never useful. Left out, nothing is checked and nothing is reported.
+- **Check order.** Consumers check the declared versions on the raw manifest first, before any shape check: a source for a newer validator is expected to have keys this one doesn't know, in the manifest too. A version error stops there and is the only thing reported; otherwise the shape check runs, then the data checker, with version warnings reported alongside.
 
 **Ids across sources.** Internally every record is keyed by source (`<source>::<id>`), so two sources may provide a faction with the same id. A faction resolves references within itself, then its game. The only cross-source references are a faction's game, a sub-faction's `parent`, which may be a faction from another source in the same game, and a slot's `source` (§7.1), which names a faction of the same game. Expressions never need source prefixes.
 
@@ -63,7 +67,7 @@ The game's own words for built-in concepts, used in the UI and, via `word`, in e
 }
 ```
 
-A game could equally map `unit` to "squad" or `list` and `group` to "team". Keys are the built-in scopes plus `faction`, `subFaction`, `upgrade`, `gear`, `weapon`, `equipment`, `specialRule` and `selector`.
+A game could equally map `unit` to "squad" or `list` and `group` to "team". A `word` follows the expression language's name rule: lowercase kebab-case that starts with a letter (`formation`, `battle-group`). Keys are the built-in scopes plus `faction`, `subFaction`, `upgrade`, `gear`, `weapon`, `equipment`, `specialRule` and `selector`.
 
 ### 3.2 Roles and unit types
 

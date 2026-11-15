@@ -53,6 +53,7 @@ my-data/
 - `extends` adds factions or sub-factions to a game another source provides, instead of `provides`: `{ "game": "full-game", "versions": ">=1.0.0 <2.0.0", "factions": [...], "subFactions": [...] }`. Validate with `fo-validate <base source> <extension source>`.
 - `examples` (example lists) is accepted but not yet checked.
 - `schemaVersion` is `1`: the version of the data format. `expressionVersion` is `1`: the version of the expression language your expressions are written for. Both only go up when a change would break existing data, and Force Org refuses a source whose version is newer than it understands (with a message to update the app). A missing `expressionVersion` is read as `1` with a warning, so always write it.
+- `minValidatorVersion` (optional, e.g. `"1.14.0"`) is the oldest validator release your source needs. New fields arrive in minor releases (the changelog says which release added each), so when you start using one, set this to that release: someone on an older validator then gets "this source needs validator 1.15.0 or newer, but this is 1.14.0; update" instead of a list of unknown properties. Only use it for features from 1.14.0 or later. Validators 1.13 and older don't know the field and reject it as an unknown property, so leave it out until you need it.
 
 | File | Schema (in `schema/`) | Holds |
 | --- | --- | --- |
@@ -63,7 +64,7 @@ my-data/
 
 ## 3. Rules that apply everywhere
 
-- **Ids are slugs** (`[a-z0-9]+(-[a-z0-9]+)*`, e.g. `infantry-squad`) and **every record's `id` equals the key it sits under**: `"carrier": { "id": "carrier", ... }`. Ids never change once published, because saved army lists point at them.
+- **Ids are slugs** (`[a-z0-9]+(-[a-z0-9]+)*`, e.g. `infantry-squad`: lowercase letters and digits, with single hyphens between words; no capitals, spaces, underscores or leading, trailing or doubled hyphens) and **every record's `id` equals the key it sits under**: `"carrier": { "id": "carrier", ... }`. The shape check enforces this on ids, record keys and `@selector` references, because an id that breaks it can't be used in an expression. Ids never change once published, because saved army lists point at them.
 - **The game defines its vocabulary.** Roles, unit types, group types, slot tags, resources, stat templates and list choices are all declared in the game file; factions refer to them by id. Nothing is built in.
 - **Costs are per resource**: `{ "points": 100 }`, or `{ "credits": 4, "slots": 1 }`. A value is a number or an expression string.
 - **Typed rules before expressions.** Restrictions, `replaces`, `limitBy`, list rules and slot/group limits enforce themselves and fix picks. Use an expression only where no typed form fits (section 7).

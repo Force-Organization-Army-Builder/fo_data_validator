@@ -1,7 +1,8 @@
+import fs from 'node:fs/promises';
 import path from 'node:path';
 
 import { formatDiagnostic } from '../src/expressions/diagnostics';
-import { readSource } from '../src/game_data/read_source';
+import { MANIFEST_FILE, readSource } from '../src/game_data/read_source';
 import { checkManifestVersions } from '../src/game_data/versions';
 import { DataIssue, validateGameData } from '../src/game_data/validate';
 import { checkShapes, ShapeFile } from '../src/game_data/shape';
@@ -12,8 +13,10 @@ import { checkShapes, ShapeFile } from '../src/game_data/shape';
  *
  *   fo-validate <source dir> [<extension source dir> ...] [--json]
  *
- * Each file's shape is checked against the zod schemas first; the data
- * checker (ids, references, stats, expressions) runs once the shapes are right.
+ * The manifests' declared versions are checked first, and a source this
+ * validator is too old for stops there. Then each file's shape is checked
+ * against the zod schemas; the data checker (ids, references, stats,
+ * expressions) runs once the shapes are right.
  * The first directory (any, in fact) provides the game; the others may extend
  * it. Exits 1 when there are errors. `--json` prints the issues as JSON.
  */
@@ -34,6 +37,33 @@ async function main() {
             'usage: npm run validate-data -- <source dir> [<extension source dir> ...] [--json]'
         );
         return 2;
+    }
+
+    const manifestLabel = (index: number) =>
+        `${path.basename(dirs[index])}/${MANIFEST_FILE}`;
+
+    // the declared versions go first, on the raw manifests: a source for a
+    // newer validator may have fields and files this one doesn't understand,
+    // and the version error is what explains them
+    const versionIssues = (
+        await Promise.all(
+            dirs.map(async (dir, index) =>
+                checkManifestVersions(
+                    await readManifest(dir),
+                    manifestLabel(index)
+                )
+            )
+        )
+    ).flat();
+    const versionErrors = versionIssues.filter(
+        (issue) => issue.severity === 'error'
+    );
+    if (versionErrors.length > 0) {
+        report(
+            versionErrors,
+            `${dirs.length} source${dirs.length === 1 ? '' : 's'} not checked`
+        );
+        return 1;
     }
 
     const sources = await Promise.all(dirs.map((dir) => readSource(dir)));
@@ -61,7 +91,7 @@ async function main() {
     // files with the wrong shape would crash the data checker, so they go first
     const shapes: Array<ShapeFile> = [
         ...sources.map(({ manifest }, index) => ({
-            file: `${path.basename(dirs[index])}/forceorg.json`,
+            file: manifestLabel(index),
             kind: 'SourceManifest' as const,
             data: manifest,
         })),
@@ -79,18 +109,35 @@ async function main() {
         ...issue,
     }));
 
-    const versionIssues = sources.flatMap(({ manifest }, index) =>
-        checkManifestVersions(
-            manifest,
-            `${path.basename(dirs[index])}/forceorg.json`
-        )
-    );
-    const issues =
-        shapeIssues.length > 0
+    // version warnings are reported with whatever comes next
+    const issues = [
+        ...versionIssues,
+        ...(shapeIssues.length > 0
             ? shapeIssues
-            : [...versionIssues, ...sets.flatMap(validateGameData)];
-    const errors = issues.filter((issue) => issue.severity === 'error');
+            : sets.flatMap(validateGameData)),
+    ];
+    const errors = report(
+        issues,
+        `${sets.length} game${sets.length === 1 ? '' : 's'} checked`
+    );
+    return errors > 0 ? 1 : 0;
+}
 
+/* The manifest as written, before any check */
+async function readManifest(dir: string): Promise<unknown> {
+    const file = path.join(dir, MANIFEST_FILE);
+    try {
+        return JSON.parse(await fs.readFile(file, 'utf8'));
+    } catch (error) {
+        throw new Error(
+            `${file} could not be read as JSON: ${error instanceof Error ? error.message : error}`
+        );
+    }
+}
+
+/* Prints the issues and a summary line; returns the number of errors */
+function report(issues: Array<DataIssue>, what: string): number {
+    const errors = issues.filter((issue) => issue.severity === 'error');
     if (json) {
         console.log(JSON.stringify(issues, null, 2));
     } else {
@@ -100,10 +147,10 @@ async function main() {
             `${issues.length - errors.length} warning${issues.length - errors.length === 1 ? '' : 's'}`,
         ];
         console.log(
-            `${sets.length} game${sets.length === 1 ? '' : 's'} checked (${dirs.map((dir) => path.basename(dir)).join(', ')}): ${counts.join(', ')}`
+            `${what} (${dirs.map((dir) => path.basename(dir)).join(', ')}): ${counts.join(', ')}`
         );
     }
-    return errors.length > 0 ? 1 : 0;
+    return errors.length;
 }
 
 main().then(

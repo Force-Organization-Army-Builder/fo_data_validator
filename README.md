@@ -139,6 +139,8 @@ Change a schema, then run `npm run generate-schema`; a test fails when `schema/`
 
 `SCHEMA_VERSION` (data format) and `EXPRESSION_VERSION` (expression language) only go up on incompatible changes. The package's semver major bumps whenever either does. See [CHANGELOG.md](CHANGELOG.md).
 
+`VALIDATOR_VERSION` is this release (`major.minor.patch`). A source may declare the oldest release it needs with `minValidatorVersion` in its manifest; `checkManifestVersions` refuses it on an older validator with a message to update. Run `checkManifestVersions` on the raw manifest before `checkShapes`, and stop on its errors: a source for a newer validator has fields the shape check would report as unknown. The field exists from 1.14.0, so it is only useful for features from 1.14.0 on.
+
 Data that uses sub-faction groups (`subFactionGroups`, a sub-faction's `group` or `when`) needs validator **1.1.0** or later, and a Force Org app that supports several sub-factions per contingent.
 
 Data that uses composition blocks (`composition`), trait effects, group `effects`, selector `traits`, `trait:` references or the `main` scope needs validator **1.2.0** or later, and an app that supports them.
@@ -158,6 +160,8 @@ Data that uses a weapon profile's own `template`, a unit profile's `traits`, or 
 Data that uses game `subTypes` needs validator **1.12.0** or later, and an app that supports them.
 
 Data that uses `effects` or `units` on a list choice's values needs validator **1.13.0** or later, and an app that supports them.
+
+Data that declares `minValidatorVersion` needs validator **1.14.0** or later. From 1.14.0 every id, record key and `@selector` reference must be lowercase kebab-case.
 
 ## Releasing
 
