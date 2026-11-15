@@ -166,7 +166,7 @@ Data that declares `minValidatorVersion` needs validator **1.14.0** or later. Fr
 ## Releasing
 
 1. Make sure `npm test`, `npm run type-check`, `npm run lint`, `npm run generate-schema -- --check` and `npm run validate-data` pass (CI runs them).
-2. Set the new version in `package.json` (`npm version <x.y.z> --no-git-tag-version`). A change to `SCHEMA_VERSION` or `EXPRESSION_VERSION`, or any other incompatible change, is a **major** bump. Whenever the major changes, run `npm run generate-schema`: it sets each schema's `$id` to the new `@<major>` URL.
+2. Set the new version in `package.json` (`npm version <x.y.z> --no-git-tag-version`) and in `VALIDATOR_VERSION` (`src/game_data/versions.ts`); a test fails when the two differ. A change to `SCHEMA_VERSION` or `EXPRESSION_VERSION`, or any other incompatible change, is a **major** bump. Whenever the major changes, run `npm run generate-schema`: it sets each schema's `$id` to the new `@<major>` URL.
 3. Add a CHANGELOG entry, commit, and merge to `main`.
 4. Tagging is automatic: once CI passes on `main`, the [Release tags](.github/workflows/release-tags.yml) workflow tags the merged commit `vX.Y.Z` from `package.json` and moves the major tag the Action uses (for example `v1`). If `vX.Y.Z` already exists it does nothing, so merges that don't bump the version add no tags. Don't push version tags by hand. A GitHub Release is not needed; jsDelivr and npm's git installs read tags. Consumers who pin `#vX.Y.Z` are unaffected by the major tag moving.
 5. Consumers update the tag in their `package.json` dependency.

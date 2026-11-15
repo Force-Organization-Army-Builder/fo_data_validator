@@ -57,7 +57,7 @@ function checkVersion(
     if (version > current) {
         return [
             issue(
-                `this source is written for ${what} version ${version}, but this version of Force Org only understands up to ${current}; update Force Org to use it`
+                `this source is written for ${what} version ${version}, but this version of Force Org only understands up to ${current}; update Force Org or the validator to use it`
             ),
         ];
     }
@@ -106,7 +106,7 @@ function checkValidatorVersion(value: unknown, file: string): Array<DataIssue> {
     if (compareReleases(required, VALIDATOR_VERSION) > 0) {
         return [
             issue(
-                `this source needs validator ${required} or newer, but this is ${VALIDATOR_VERSION}; update Force Org to use it`
+                `this source needs validator ${required} or newer, but this is ${VALIDATOR_VERSION}; update Force Org or the validator to use it`
             ),
         ];
     }
