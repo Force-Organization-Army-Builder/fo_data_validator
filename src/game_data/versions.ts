@@ -1,4 +1,5 @@
 import type { SourceManifest } from '../types';
+import { RELEASE_PATTERN } from './schema';
 import type { DataIssue } from './validate';
 
 /*
@@ -13,6 +14,12 @@ import type { DataIssue } from './validate';
  * here, and keep the previous language's behaviour behind it, when the
  * language changes incompatibly (docs/specs/expression_language_spec_2026-10-17.md §14).
  */
+
+/**
+ * This validator's release, as in package.json (a test keeps the two equal).
+ * A literal, not a read of package.json, so this module stays browser-safe.
+ */
+export const VALIDATOR_VERSION = '1.14.0';
 
 export const SCHEMA_VERSION = 1;
 export const OLDEST_SCHEMA_VERSION = 1;
@@ -64,21 +71,73 @@ function checkVersion(
     return [];
 }
 
+/* The three numbers of a `major.minor.patch` release, or undefined */
+function releaseParts(value: unknown): [number, number, number] | undefined {
+    if (typeof value !== 'string') return undefined;
+    const match = RELEASE_PATTERN.exec(value);
+    return match
+        ? [Number(match[1]), Number(match[2]), Number(match[3])]
+        : undefined;
+}
+
+/** Negative when release a is older than b, 0 when equal, positive when newer */
+export function compareReleases(a: string, b: string): number {
+    const [x, y] = [releaseParts(a), releaseParts(b)];
+    if (!x || !y) throw new Error(`not a release number: ${x ? b : a}`);
+    return x[0] - y[0] || x[1] - y[1] || x[2] - y[2];
+}
+
+function checkValidatorVersion(value: unknown, file: string): Array<DataIssue> {
+    if (value === undefined) return [];
+    const issue = (message: string): DataIssue => ({
+        severity: 'error',
+        file,
+        path: 'minValidatorVersion',
+        message,
+    });
+    if (!releaseParts(value)) {
+        return [
+            issue(
+                'minValidatorVersion must be a release number, `major.minor.patch`, e.g. "1.14.0"'
+            ),
+        ];
+    }
+    const required = value as string;
+    if (compareReleases(required, VALIDATOR_VERSION) > 0) {
+        return [
+            issue(
+                `this source needs validator ${required} or newer, but this is ${VALIDATOR_VERSION}; update Force Org to use it`
+            ),
+        ];
+    }
+    return [];
+}
+
 /**
  * Checks a manifest's declared versions. Errors mean the source (its games
  * included) can't be loaded; a missing `expressionVersion` is only a warning.
+ *
+ * Takes the raw manifest, before any shape check: a source written for a
+ * newer validator is expected to have fields this one doesn't know, and the
+ * version errors are what explain them. Any input is safe.
  */
 export function checkManifestVersions(
-    manifest: Pick<SourceManifest, 'schemaVersion' | 'expressionVersion'>,
+    raw: unknown,
     file = 'forceorg.json'
 ): Array<DataIssue> {
-    const issues = checkVersion(
-        'data format',
-        manifest.schemaVersion,
-        'schemaVersion',
-        SCHEMA_VERSION,
-        OLDEST_SCHEMA_VERSION,
-        file
+    const manifest = (
+        raw !== null && typeof raw === 'object' ? raw : {}
+    ) as Partial<Record<keyof SourceManifest, unknown>>;
+    const issues = checkValidatorVersion(manifest.minValidatorVersion, file);
+    issues.push(
+        ...checkVersion(
+            'data format',
+            manifest.schemaVersion,
+            'schemaVersion',
+            SCHEMA_VERSION,
+            OLDEST_SCHEMA_VERSION,
+            file
+        )
     );
     if (manifest.expressionVersion === undefined) {
         issues.push({

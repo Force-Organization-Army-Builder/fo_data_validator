@@ -11,6 +11,14 @@
                 }
             ]
         },
+        "minValidatorVersion": {
+            "description": "the oldest validator release that understands this source, as `major.minor.patch`, e.g. `1.14.0`; an older validator refuses the source with a message to update instead of reporting its newer fields as unknown. Set it to the release that added the newest feature the source uses. Validators before 1.14.0 do not know this field, so a value below 1.14.0 is never useful",
+            "allOf": [
+                {
+                    "$ref": "#/definitions/__schema1"
+                }
+            ]
+        },
         "schemaVersion": {
             "type": "number",
             "description": "data format version; the app refuses sources newer than it understands"
@@ -19,7 +27,7 @@
             "description": "the version of the expression language the source's expressions are written for; the app refuses sources newer than it understands. Left out, version 1 (with a warning)",
             "allOf": [
                 {
-                    "$ref": "#/definitions/__schema1"
+                    "$ref": "#/definitions/__schema2"
                 }
             ]
         },
@@ -33,7 +41,7 @@
             "description": "shown next to everything loaded from this source",
             "allOf": [
                 {
-                    "$ref": "#/definitions/__schema2"
+                    "$ref": "#/definitions/__schema3"
                 }
             ]
         },
@@ -41,7 +49,7 @@
             "description": "complete games this source defines",
             "allOf": [
                 {
-                    "$ref": "#/definitions/__schema3"
+                    "$ref": "#/definitions/__schema4"
                 }
             ]
         },
@@ -49,7 +57,7 @@
             "description": "games defined by another source that this source adds to",
             "allOf": [
                 {
-                    "$ref": "#/definitions/__schema9"
+                    "$ref": "#/definitions/__schema10"
                 }
             ]
         },
@@ -57,7 +65,7 @@
             "description": "example lists the checker runs when the source loads (and in CI where adopted)",
             "allOf": [
                 {
-                    "$ref": "#/definitions/__schema11"
+                    "$ref": "#/definitions/__schema12"
                 }
             ]
         }
@@ -72,24 +80,28 @@
             "type": "string"
         },
         "__schema1": {
-            "type": "number"
+            "type": "string",
+            "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$"
         },
         "__schema2": {
-            "type": "string"
+            "type": "number"
         },
         "__schema3": {
+            "type": "string"
+        },
+        "__schema4": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
                     "game": {
-                        "$ref": "#/definitions/__schema4"
-                    },
-                    "factions": {
                         "$ref": "#/definitions/__schema5"
                     },
+                    "factions": {
+                        "$ref": "#/definitions/__schema6"
+                    },
                     "subFactions": {
-                        "$ref": "#/definitions/__schema7"
+                        "$ref": "#/definitions/__schema8"
                     }
                 },
                 "required": [
@@ -100,35 +112,35 @@
                 "description": "File paths are relative to the manifest"
             }
         },
-        "__schema4": {
+        "__schema5": {
             "type": "string",
             "description": "a `GameSystem` file"
         },
-        "__schema5": {
+        "__schema6": {
             "type": "array",
             "items": {
-                "$ref": "#/definitions/__schema6"
+                "$ref": "#/definitions/__schema7"
             },
             "description": "`Faction` files"
         },
-        "__schema6": {
+        "__schema7": {
             "type": "string"
         },
-        "__schema7": {
+        "__schema8": {
             "description": "`SubFaction` files",
             "allOf": [
                 {
-                    "$ref": "#/definitions/__schema8"
+                    "$ref": "#/definitions/__schema9"
                 }
             ]
         },
-        "__schema8": {
+        "__schema9": {
             "type": "array",
             "items": {
                 "type": "string"
             }
         },
-        "__schema9": {
+        "__schema10": {
             "type": "array",
             "items": {
                 "type": "object",
@@ -152,7 +164,7 @@
                         "description": "may name a parent faction from another source in the same game",
                         "allOf": [
                             {
-                                "$ref": "#/definitions/__schema10"
+                                "$ref": "#/definitions/__schema11"
                             }
                         ]
                     }
@@ -164,13 +176,13 @@
                 "additionalProperties": false
             }
         },
-        "__schema10": {
+        "__schema11": {
             "type": "array",
             "items": {
                 "type": "string"
             }
         },
-        "__schema11": {
+        "__schema12": {
             "type": "array",
             "items": {
                 "type": "string"

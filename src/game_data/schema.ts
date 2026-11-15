@@ -1296,8 +1296,18 @@ export const GameExtensionSchema = z.strictObject({
         ),
 });
 
+/** A release number, exactly `major.minor.patch` with no leading zeros */
+export const RELEASE_PATTERN = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
+
 export const SourceManifestSchema = z.strictObject({
     $schema: schemaUrl,
+    minValidatorVersion: z
+        .string()
+        .regex(RELEASE_PATTERN, 'a release number, `major.minor.patch`')
+        .optional()
+        .describe(
+            'the oldest validator release that understands this source, as `major.minor.patch`, e.g. `1.14.0`; an older validator refuses the source with a message to update instead of reporting its newer fields as unknown. Set it to the release that added the newest feature the source uses. Validators before 1.14.0 do not know this field, so a value below 1.14.0 is never useful'
+        ),
     schemaVersion: z
         .number()
         .describe(

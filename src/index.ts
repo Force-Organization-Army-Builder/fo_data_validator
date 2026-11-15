@@ -8,6 +8,8 @@ export * from './game_data/schema';
 export { checkShapes, checkShape, sourceShapeFiles } from './game_data/shape';
 export type { ShapeFile, ShapeIssue, ShapeKind } from './game_data/shape';
 export {
+    VALIDATOR_VERSION,
+    compareReleases,
     SCHEMA_VERSION,
     OLDEST_SCHEMA_VERSION,
     EXPRESSION_VERSION,
