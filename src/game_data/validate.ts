@@ -1650,8 +1650,6 @@ class Validator {
                 selector.slice(1),
                 scope.vocabulary.selectors
             );
-            if (!selector.startsWith('@'))
-                this.report(path, `a selector reference starts with '@'`);
             return;
         }
         const traits = (scope.vocabulary.traits ?? []).map(tagId);

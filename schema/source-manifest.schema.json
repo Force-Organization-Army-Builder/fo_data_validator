@@ -135,6 +135,7 @@
                 "properties": {
                     "game": {
                         "type": "string",
+                        "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
                         "description": "id of the extended game; bound to a loaded source that provides it (the user picks if several do)"
                     },
                     "versions": {

@@ -28,10 +28,20 @@ const MAX_ISSUES_PER_FILE = 50;
 const join = (path: ReadonlyArray<PropertyKey>) =>
     path.map((part) => String(part)).join('/');
 
-/* The issues of a union's best branch: the one that got furthest, i.e. has the fewest problems */
+/*
+ * How far a union branch got: fewer problems is further, and on a tie a branch
+ * whose value had the wrong type outright got less far than one of the right type
+ */
+const distance = (branch: Array<Issue>) =>
+    branch.length +
+    (branch.every((i) => i.code === 'invalid_type' && i.path.length === 0)
+        ? 0.5
+        : 0);
+
+/* The issues of a union's best branch: the one that got furthest */
 function bestBranch(branches: Array<Array<Issue>>): Array<Issue> {
     return branches.reduce((best, branch) =>
-        branch.length < best.length ? branch : best
+        distance(branch) < distance(best) ? branch : best
     );
 }
 
@@ -54,8 +64,19 @@ function describe(
         case 'unrecognized_keys':
             return issue.keys.map((key) => ({
                 path: join([...path, key]),
-                message: `unknown property '${key}'`,
+                message: `unknown property '${key}' (misspelt, or a field from a newer validator release)`,
             }));
+        case 'invalid_key': {
+            // zod reports the key itself as the last part of the path
+            const key = String(path.at(-1));
+            const reasons = issue.issues.map((inner) => inner.message);
+            return [
+                {
+                    path: join(path),
+                    message: `invalid key '${key}': ${reasons.join('; ') || issue.message}`,
+                },
+            ];
+        }
         case 'invalid_type':
             return [
                 {
