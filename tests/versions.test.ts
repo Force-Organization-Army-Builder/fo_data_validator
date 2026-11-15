@@ -105,7 +105,7 @@ describe('minValidatorVersion', () => {
             assert.equal(issues[0].path, 'minValidatorVersion');
             assert.equal(
                 issues[0].message,
-                `this source needs validator ${v} or newer, but this is ${VALIDATOR_VERSION}; update Force Org to use it`
+                `this source needs validator ${v} or newer, but this is ${VALIDATOR_VERSION}; update Force Org or the validator to use it`
             );
         }
     });
