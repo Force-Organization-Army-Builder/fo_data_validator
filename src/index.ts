@@ -22,7 +22,6 @@ export { validateGameData } from './game_data/validate';
 export type { DataIssue, DataFile, GameDataSet } from './game_data/validate';
 export { buildVocabulary, scopeWords } from './game_data/vocabulary';
 export {
-    COST_TARGETS,
     defaultUsedFor,
     usedFor,
     resourcesFor,
@@ -32,14 +31,8 @@ export { MANIFEST_FILE, assembleSource, listedFiles } from './game_data/source';
 export type { SourceInfo, SourceOnDisk } from './game_data/source';
 export { SCHEMA_FILES, jsonSchemas } from './game_data/json_schema';
 
-export {
-    BUILT_IN_SCOPES,
-    FIELD_SCOPES,
-    checkExpression,
-    tagId,
-} from './expressions/checker';
+export { FIELD_SCOPES, checkExpression, tagId } from './expressions/checker';
 export type {
-    BuiltInScope,
     CheckResult,
     CompiledExpression,
     ExpressionField,

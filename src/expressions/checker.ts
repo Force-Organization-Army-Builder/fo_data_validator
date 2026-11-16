@@ -5,6 +5,8 @@ import {
     Severity,
 } from './diagnostics';
 import { Argument, Expr, parseExpression } from './parser';
+import { BUILT_IN_SCOPES } from '../game_data/schema';
+import type { BuiltInScope } from '../types';
 
 /*
  * Load-time checker for expressions (spec §7–§13): names, scopes allowed for
@@ -14,22 +16,8 @@ import { Argument, Expr, parseExpression } from './parser';
  * follow-on errors about it.
  */
 
-export const BUILT_IN_SCOPES = [
-    /** a special rule on the unit, for its `grants` */
-    'rule',
-    'option',
-    'profile',
-    'unit',
-    'slot',
-    'group',
-    'contingent',
-    'root',
-    /** the list's main contingent (its root group's type has `source: main`) */
-    'main',
-    'list',
-] as const;
-
-export type BuiltInScope = (typeof BUILT_IN_SCOPES)[number];
+export { BUILT_IN_SCOPES };
+export type { BuiltInScope };
 
 /** Scopes each kind of field may use (spec §8.2) */
 export const FIELD_SCOPES = {

@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- No change to what data passes, and the JSON Schema files are unchanged. Lists that were declared twice now have one definition each, in `src/game_data/schema.ts`: the built-in scopes (`BUILT_IN_SCOPES`, with the new `TERM_SCOPES` for the nine a game can rename in `terms`), `COST_TARGETS` and the faction record kinds. The stat, special-rule and trait effects that five places listed separately come from one list.
+- **For the app:** `TERM_SCOPES`, `UnitEffectSchema` and the `UnitEffect` and `TermScope` types are new exports. `BUILT_IN_SCOPES`, `BuiltInScope` and `COST_TARGETS` keep their names and values; `COST_TARGETS` is now a readonly tuple.
+
 ## 1.14.0
 
 - **Stricter check: ids must be lowercase kebab-case.** This can reject data that passed before. Every record id, every reference to one, every record key and every `@selector` reference must match `^[a-z0-9]+(?:-[a-z0-9]+)*$` (letters a-z and digits, with single hyphens between words, e.g. `infantry-squad`), the id rule of the expression language. The spec always required this (§1.2), and an id that breaks it could never be referenced from an expression, so a bad id, which used to pass unreported, is now a shape error. A bad key is reported at its own path as `invalid key 'Bad ID': ids are lowercase kebab-case: …`. A term's `word` must also follow the expression name rule, which means starting with a letter. The JSON Schema carries the pattern (`pattern` on ids, `propertyNames` on every id-keyed map), so editors flag bad ids as you type. Every example source and the game template pass unchanged.
