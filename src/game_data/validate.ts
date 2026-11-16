@@ -11,7 +11,11 @@ import {
 } from '../expressions/checker';
 import { evaluateNumber, EvaluationError } from '../expressions/evaluator';
 import { didYouMean } from '../expressions/diagnostics';
-import { DEFAULT_SUB_FACTION_GROUP, swapFromRefs } from './schema';
+import {
+    DEFAULT_SUB_FACTION_GROUP,
+    FACTION_RECORD_KINDS,
+    swapFromRefs,
+} from './schema';
 import type {
     AddedSlot,
     Condition,
@@ -72,18 +76,9 @@ export type GameDataSet = {
     subFactions: Array<DataFile<SubFaction>>;
 };
 
-const RECORD_KINDS = [
-    'units',
-    'weapons',
-    'equipment',
-    'upgrades',
-    'specialRules',
-    'groups',
-    'selectors',
-    'slotOptions',
-    'subChoices',
-    'listRules',
-] as const satisfies ReadonlyArray<keyof FactionRecords>;
+const RECORD_KINDS = FACTION_RECORD_KINDS satisfies ReadonlyArray<
+    keyof FactionRecords
+>;
 
 const keys = (record?: object) => Object.keys(record ?? {});
 

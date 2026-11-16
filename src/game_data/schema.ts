@@ -240,15 +240,22 @@ export const SlotSourceSchema = z
         "Where a slot's units come from instead of the contingent. Units keep their own records (gear, rules, upgrades) but not their home sub-faction's unit modifiers. The slot's `units` selector picks among them, seeing only each unit's own traits; the group's `units` doesn't apply"
     );
 
-export const SlotUnitEffectSchema = z
-    .discriminatedUnion('kind', [
-        StatEffectSchema,
-        SpecialRuleEffectSchema,
-        TraitEffectSchema,
-    ])
-    .describe(
-        "applied to the unit filling the slot, after the group's effects, e.g. replacing a borrowed unit's faction trait"
-    );
+/*
+ * The effects on a unit, shared by everything that can change one. Each use
+ * gets its own union so each keeps its own description in the JSON Schema.
+ */
+const unitEffects = [
+    StatEffectSchema,
+    SpecialRuleEffectSchema,
+    TraitEffectSchema,
+] as const;
+const unitEffect = () => z.discriminatedUnion('kind', unitEffects);
+
+export const UnitEffectSchema = unitEffect();
+
+export const SlotUnitEffectSchema = unitEffect().describe(
+    "applied to the unit filling the slot, after the group's effects, e.g. replacing a borrowed unit's faction trait"
+);
 
 const addedSlot = {
     roleChoices: z
@@ -269,7 +276,8 @@ export const AddedSlotSchema = z
 /* Game definition                                                     */
 /* ------------------------------------------------------------------ */
 
-export const BUILT_IN_SCOPES = [
+/** The built-in scopes a game may give its own word in `terms` */
+export const TERM_SCOPES = [
     'option',
     'profile',
     'unit',
@@ -277,14 +285,22 @@ export const BUILT_IN_SCOPES = [
     'group',
     'contingent',
     'root',
+    /** the list's main contingent (its root group's type has `source: main`) */
     'main',
     'list',
 ] as const;
 
-export const BuiltInScopeSchema = z.enum(BUILT_IN_SCOPES);
+/** Every scope an expression can name: the term scopes and `rule` */
+export const BUILT_IN_SCOPES = [
+    /** a special rule on the unit, for its `grants` */
+    'rule',
+    ...TERM_SCOPES,
+] as const;
+
+export const BuiltInScopeSchema = z.enum(TERM_SCOPES);
 
 export const TERM_KEYS = [
-    ...BUILT_IN_SCOPES,
+    ...TERM_SCOPES,
     'faction',
     'subFaction',
     'upgrade',
@@ -432,15 +448,9 @@ export const StatTemplateSchema = z.strictObject({
     stats: z.array(StatDefinitionSchema),
 });
 
-export const ListChoiceValueEffectSchema = z
-    .discriminatedUnion('kind', [
-        StatEffectSchema,
-        SpecialRuleEffectSchema,
-        TraitEffectSchema,
-    ])
-    .describe(
-        "applied to every matching unit in the list while the value is picked, right after the unit's own traits and sub-faction modifiers; the pick is already the condition, so a `when` needs no `choice()`"
-    );
+export const ListChoiceValueEffectSchema = unitEffect().describe(
+    "applied to every matching unit in the list while the value is picked, right after the unit's own traits and sub-faction modifiers; the pick is already the condition, so a `when` needs no `choice()`"
+);
 
 export const ListChoiceValueSchema = z
     .strictObject({
@@ -653,13 +663,7 @@ export const OptionSchema = z.strictObject({
             "ids of shared sub-choices made with the option, e.g. a weapon's `mount`"
         ),
     effects: z
-        .array(
-            z.discriminatedUnion('kind', [
-                StatEffectSchema,
-                SpecialRuleEffectSchema,
-                TraitEffectSchema,
-            ])
-        )
+        .array(unitEffect())
         .optional()
         .describe(
             'applied to the unit while the option is picked, e.g. armour plating raising armour'
@@ -982,15 +986,9 @@ export const GroupRequirementSchema = z
     })
     .describe('units the list must already hold before the group can be taken');
 
-export const GroupEffectSchema = z
-    .discriminatedUnion('kind', [
-        StatEffectSchema,
-        SpecialRuleEffectSchema,
-        TraitEffectSchema,
-    ])
-    .describe(
-        'applied to every unit in the group, including units in slots added later'
-    );
+export const GroupEffectSchema = unitEffect().describe(
+    'applied to every unit in the group, including units in slots added later'
+);
 
 export const GroupSchema = z.strictObject({
     ...named,
@@ -1040,9 +1038,7 @@ export const AllowedRolesEffectSchema = z
     .describe('units of these roles may also fill the slot');
 
 export const SlotOptionEffectSchema = z.discriminatedUnion('kind', [
-    StatEffectSchema,
-    SpecialRuleEffectSchema,
-    TraitEffectSchema,
+    ...unitEffects,
     SlotEffectSchema,
     AllowedRolesEffectSchema,
 ]);
@@ -1217,9 +1213,7 @@ export const UnitModifierActionSchema = z.discriminatedUnion('kind', [
         .describe(
             "the matched units can't be taken (e.g. a sub-faction's banned vehicles)"
         ),
-    StatEffectSchema,
-    SpecialRuleEffectSchema,
-    TraitEffectSchema,
+    ...unitEffects,
 ]);
 
 export const UnitModifierSchema = z

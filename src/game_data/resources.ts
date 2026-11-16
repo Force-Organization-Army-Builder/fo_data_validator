@@ -6,15 +6,6 @@ import type { CostTarget, GameSystem, Resource } from '../types';
  * Every cost field in the Data Editor and the data checker read it from here.
  */
 
-export const COST_TARGETS: ReadonlyArray<CostTarget> = [
-    'unit',
-    'additionalModels',
-    'option',
-    'slotOption',
-    'group',
-    'grant',
-];
-
 const BY_SCOPE: Record<Resource['scope'], Array<CostTarget>> = {
     list: ['unit', 'additionalModels', 'option', 'slotOption', 'group'],
     unit: ['option', 'slotOption'],

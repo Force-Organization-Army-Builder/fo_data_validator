@@ -28,7 +28,8 @@ export type ProvidedGame = Infer<typeof S.ProvidedGameSchema>;
 export type GameExtension = Infer<typeof S.GameExtensionSchema>;
 
 export type GameSystem = Infer<typeof S.GameSystemSchema>;
-export type BuiltInScope = Infer<typeof S.BuiltInScopeSchema>;
+export type BuiltInScope = (typeof S.BUILT_IN_SCOPES)[number];
+export type TermScope = Infer<typeof S.BuiltInScopeSchema>;
 export type TermKey = Infer<typeof S.TermKeySchema>;
 export type Term = Infer<typeof S.TermSchema>;
 export type Role = Infer<typeof S.RoleSchema>;
@@ -42,9 +43,7 @@ export type StatTemplate = Infer<typeof S.StatTemplateSchema>;
 export type StatDefinition = Infer<typeof S.StatDefinitionSchema>;
 export type ListChoice = Infer<typeof S.ListChoiceSchema>;
 export type ListChoiceValue = Infer<typeof S.ListChoiceValueSchema>;
-export type ListChoiceValueEffect = Infer<
-    typeof S.ListChoiceValueEffectSchema
->;
+export type ListChoiceValueEffect = Infer<typeof S.ListChoiceValueEffectSchema>;
 
 export type ListRule = Infer<typeof S.ListRuleSchema>;
 export type ResourceCapRule = Infer<typeof S.ResourceCapRuleSchema>;
@@ -97,6 +96,8 @@ export type Group = Infer<typeof S.GroupSchema>;
 export type GroupEffect = Infer<typeof S.GroupEffectSchema>;
 export type Slot = Infer<typeof S.SlotSchema>;
 export type SlotSource = Infer<typeof S.SlotSourceSchema>;
+/** A stat, special-rule or trait effect on a unit */
+export type UnitEffect = Infer<typeof S.UnitEffectSchema>;
 export type SlotUnitEffect = Infer<typeof S.SlotUnitEffectSchema>;
 export type AddedSlot = Infer<typeof S.AddedSlotSchema>;
 export type GroupRequirement = Infer<typeof S.GroupRequirementSchema>;
