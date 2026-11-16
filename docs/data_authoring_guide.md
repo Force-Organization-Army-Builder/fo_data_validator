@@ -86,7 +86,7 @@ Required: `id`, `version`, `name`, `roles`, `unitTypes`, `groupTypes`, `resource
 | `groupTypes` | kinds of container (group, team, formation). `contingent: "root"` starts a contingent (`source: "main"` or `"ally"`); `contingent: { "linksTo": ["core"] }` attaches to a root group. `min`/`max` limit how many; `cost` is what a group spends. |
 | `slotTags` | tags a slot can carry (`prime`); slot options attach to a tag. `optionLabel` names the options. `color` and `icon` (validator ≥1.5.0) pick the tag's look in the app's palette (`amber`, `red`, `orange`, `green`, `teal`, `blue`, `violet`, `pink`, `slate`; `star`, `spark`, `diamond`, `hex`, `cross`, `flag`, `swords`, `crown`, `fleur`, `circle`, `triangle`, `square`, `target`, `bolt`); left out or unknown, the app picks from the id. |
 | `resources` | anything spent or capped. `scope: "list"` (points, set by the player: `defaultLimit`, `suffix`), `"unit"` (per-unit capacity from a profile stat: `capacityStat`), `"contingent"` (granted and spent within a contingent: `message` is the overspent issue). `usedFor` limits where an amount in it may be given (`unit`, `additionalModels`, `option`, `slotOption`, `group`, `grant`). |
-| `stats` | `unit` and `weapon` stat templates: `{ "id", "name", "stats": [{ "id", "label", "numeric"? }] }`. A numeric stat can be shifted by effects (`3+` −1 → `2+`). |
+| `stats` | `unit` and `weapon` stat templates: `{ "id", "name", "stats": [{ "id", "label", "numeric"? }] }`. A numeric stat can be shifted by effects (`3+` −1 → `2+`); an `add` on a stat that isn't marked `numeric` is a warning. |
 | `choices` | list-level choices (stance, battle size): `{ "id", "name", "values": {...}, "default"? }`. Read in expressions with `choice(id)`. A value may have `effects` and `units` (validator ≥1.13.0, see Effects): while it is picked, its effects apply to every matching unit in the list. |
 | `listRules` | typed list-wide rules (below). |
 | `groups` | groups every faction may take. |
@@ -199,7 +199,7 @@ Required: `id`, `version`, `name`, `game: { "id", "versions" }` and all of `unit
 
 - `weapons`: `{ id, name, template, profiles: [{ name, template?, stats, traits?, specialRules? }] }`, `template` a weapon stat template of the game. A profile's own `template` (validator 1.11.0) replaces the weapon's for that profile, for a weapon with a shooting and a close-combat profile: a spear with `"template": "ranged"` whose `Spear (Melee)` profile has `"template": "melee"` and the melee stats. Keep it one weapon rather than two records, so gear refs, swaps and counts treat it as one item (`spear` in `examples/full`).
 - `equipment`: `{ id, name, text }`.
-- `specialRules`: `{ id, name, text, configurable?, defaultValue?, grants?, slots? }`. Units and profiles use them as `{ "id", "value"? }` in `specialRules`. `grants` gives contingent resources and may use `rule.value()`. `slots` are slots each unit with the rule adds to its group (see [Slots filled from another faction](#slots-filled-from-another-faction)).
+- `specialRules`: `{ id, name, text, configurable?, defaultValue?, grants?, slots? }`. Units and profiles use them as `{ "id", "value"? }` in `specialRules`. A `value` given to a rule that isn't `configurable` is a warning. `grants` gives contingent resources and may use `rule.value()`. `slots` are slots each unit with the rule adds to its group (see [Slots filled from another faction](#slots-filled-from-another-faction)).
 
 ### Upgrades and options
 
