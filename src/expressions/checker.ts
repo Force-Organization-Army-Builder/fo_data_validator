@@ -93,6 +93,8 @@ export type ExpressionVocabulary = {
     subTypes?: ReadonlyArray<string>;
     /** traits units have or effects give, in any faction of the game; free text, so an unknown one is only a warning */
     traits?: ReadonlyArray<string>;
+    /** the game's `traits` in `tagId` form (ids and names), when it defines any; a `trait:` reference matching none is a warning */
+    definedTraits?: ReadonlyArray<string>;
     /** resource id → where it's spent */
     resources: Record<string, 'list' | 'unit' | 'contingent'>;
     /** list choice id → its value ids */
@@ -749,6 +751,15 @@ class Checker {
                 }
                 return this.resolved(arg, 'unitTag', true);
             case 'trait': {
+                if (v.definedTraits) {
+                    if (!v.definedTraits.includes(arg.id))
+                        this.report(
+                            'warning',
+                            `the game defines no trait '${arg.id}'${didYouMean(arg.id, v.definedTraits)}`,
+                            arg
+                        );
+                    return this.resolved(arg, 'trait', true);
+                }
                 const traits = (v.traits ?? []).map(tagId);
                 if (!traits.includes(arg.id)) {
                     this.report(

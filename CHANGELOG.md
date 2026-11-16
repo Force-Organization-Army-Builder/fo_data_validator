@@ -1,7 +1,15 @@
 # Changelog
 
-## Unreleased
+## 2.0.0
 
+A major release, because some data that passed 1.x is now rejected. The `v1` tag and the `@1` JSON Schema URLs stay on 1.14.0; to move, use `@v2` for the GitHub Action, `#v2.0.0` in `package.json`, and `@2` in `$schema` URLs. `schemaVersion` stays 1 and `expressionVersion` stays 1, so a source needs no change to its manifest.
+
+- **Stricter check: counts must be whole numbers.** This can reject data that passed before. A unit's `modelCount`, `additionalModels.max`, an upgrade's `perModel.everyX` and `perModel.count`, `swapFrom.count`, the models in a composition block and a group requirement's `count` must be whole numbers of 1 or more. `perModel.max`, a composition block's `min` and a slot's `repeat.min` must be whole numbers of 0 or more. A `min` or `max` that takes a number or an expression (group types, groups, slot `repeat`, upgrades, options, composition blocks, unit limits, unit-count list rules, sub-faction groups) takes a whole number of 0 or more as its number. A gear limit's `count` must be above 0 and may still be a fraction. The JSON Schema says `integer` with a `minimum` for these, so editors flag them too.
+- **Stricter check: a fixed `min` above a fixed `max` is an error** on group types, groups, slot `repeat`, upgrades and unit-count list rules, as it already was on sub-faction groups and composition blocks.
+- **Game `traits`.** A game may define its unit traits, `{ "field-army": { "id": "field-army", "name": "Field Army", "description": "…" } }`, as it can its `subTypes`. When it does, a unit or profile trait, a trait an effect gives or takes, a selector's `traits` entry or a `trait:` reference that matches none is a warning. Left out, nothing changes. `examples/full` defines them and declares `"minValidatorVersion": "2.0.0"`. Data that uses `traits` in the game file needs validator ≥2.0.0 and an app that supports it.
+- **Versions are read.** A file's `version` that isn't `major.minor.patch`, a version range that can't be read, and a range that leaves out the version it is about are warnings: a faction's `game.versions` against the game, a sub-faction's `parent.versions` against its parent faction, and, in `fo-validate`, an `extends` entry's `versions` against the game it binds to. Ranges are comparators separated by spaces (`>=1.2.0 <2.0.0`), with `||` between alternatives and `^`, `~` and `*` understood.
+- **More warnings for fields that are never read:** a resource's `capacityStat`, `defaultLimit` or `message` on a resource of another scope, `perModel.everyX` on an upgrade that isn't `one-in-x`, and `source` on a linked group type.
+- **For the app:** `satisfiesRange`, `isVersionRange` and `isRelease` are exported, as are `WholeNumberSchema`, `PositiveWholeNumberSchema`, `CountOrExprSchema`, `TraitSchema` and the `Trait` type. `ExpressionVocabulary` gains `definedTraits`.
 - **New warnings.** None of them is an error, so data that passed still passes:
     - a stat effect's `add` on a stat that no unit stat template marks `numeric`;
     - a `value` given to a special rule that isn't `configurable`;

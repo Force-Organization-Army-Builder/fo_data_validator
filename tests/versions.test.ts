@@ -8,6 +8,8 @@ import { describe, it } from 'node:test';
 import {
     checkManifestVersions,
     compareReleases,
+    isVersionRange,
+    satisfiesRange,
     EXPRESSION_VERSION,
     expressionVersionOf,
     SCHEMA_VERSION,
@@ -216,5 +218,87 @@ describe('fo-validate', () => {
             }),
             { code: 1, paths: ['expressionVersion', 'someNewerField'] }
         );
+    });
+});
+
+describe('satisfiesRange', () => {
+    const cases: Array<[string, string, boolean | undefined]> = [
+        ['1.4.0', '>=1.0.0 <2.0.0', true],
+        ['2.0.0', '>=1.0.0 <2.0.0', false],
+        ['0.9.9', '>=1.0.0', false],
+        ['1.2.3', '1.2.3', true],
+        ['1.2.4', '=1.2.3', false],
+        ['1.9.0', '^1.2.0', true],
+        ['2.0.0', '^1.2.0', false],
+        ['0.2.9', '^0.2.1', true],
+        ['0.3.0', '^0.2.1', false],
+        ['1.2.9', '~1.2.3', true],
+        ['1.3.0', '~1.2.3', false],
+        ['3.0.0', '<1.0.0 || >=3.0.0', true],
+        ['2.0.0', '<1.0.0 || >=3.0.0', false],
+        ['7.1.0', '*', true],
+        ['1.0.0', 'latest', undefined],
+        ['1.0.0', '>=1.0', undefined],
+        ['1.0.0', '', undefined],
+        ['one', '>=1.0.0', undefined],
+    ];
+    for (const [version, range, expected] of cases) {
+        it(`${version} in '${range}' is ${expected}`, () => {
+            assert.equal(satisfiesRange(version, range), expected);
+        });
+    }
+
+    it('says whether a range can be read', () => {
+        assert.equal(isVersionRange('>=1.0.0 <2.0.0'), true);
+        assert.equal(isVersionRange('1.x'), false);
+    });
+});
+
+describe('fo-validate with an extension source', () => {
+    const bin = path.join(import.meta.dirname, '../bin/fo-validate.mjs');
+    const examples = path.join(import.meta.dirname, '../examples');
+
+    /* runs the CLI on the full source and a copy of the extension with its range changed */
+    async function issuesFor(versions: string) {
+        const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'fo-validate-'));
+        try {
+            await fs.cp(path.join(examples, 'extension'), dir, {
+                recursive: true,
+            });
+            const file = path.join(dir, 'forceorg.json');
+            const manifest = JSON.parse(await fs.readFile(file, 'utf8'));
+            manifest.extends[0].versions = versions;
+            await fs.writeFile(file, JSON.stringify(manifest));
+            const out = execFileSync(
+                process.execPath,
+                [bin, path.join(examples, 'full'), dir, '--json'],
+                { encoding: 'utf8' }
+            );
+            return (
+                JSON.parse(out) as Array<{
+                    severity: string;
+                    path: string;
+                    message: string;
+                }>
+            ).map((i) => `${i.severity} ${i.path}: ${i.message}`);
+        } finally {
+            await fs.rm(dir, { recursive: true });
+        }
+    }
+
+    it('accepts a range that holds the game it binds to', async () => {
+        assert.deepEqual(await issuesFor('>=1.0.0 <2.0.0'), []);
+    });
+
+    it('warns when the range leaves the game out', async () => {
+        assert.deepEqual(await issuesFor('>=2.0.0'), [
+            "warning extends/0/versions: the game 'full-game' is version 1.0.0, which '>=2.0.0' leaves out",
+        ]);
+    });
+
+    it("warns about a range it can't read", async () => {
+        assert.deepEqual(await issuesFor('newest'), [
+            "warning extends/0/versions: 'newest' can't be read as a version range like '>=1.2.0 <2.0.0'",
+        ]);
     });
 });

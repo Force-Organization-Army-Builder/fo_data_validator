@@ -10,6 +10,7 @@ import {
     tagId,
 } from '../expressions/checker';
 import { evaluateNumber, EvaluationError } from '../expressions/evaluator';
+import { isRelease, isVersionRange, satisfiesRange } from './versions';
 import { didYouMean } from '../expressions/diagnostics';
 import {
     DEFAULT_SUB_FACTION_GROUP,
@@ -32,6 +33,7 @@ import type {
     SlotOption,
     SlotSource,
     SlotUnitEffect,
+    Resource,
     SpecialRule,
     SubChoice,
     SpecialRuleEffect,
@@ -48,7 +50,7 @@ import type {
     GearRef,
     GearSwap,
 } from '../types';
-import { buildVocabulary, subTypeTags } from './vocabulary';
+import { buildVocabulary, definedTraits, subTypeTags } from './vocabulary';
 
 /*
  * Integrity checks for game data in the new schema (data schema spec §11): ids
@@ -179,9 +181,12 @@ class Validator {
 
     /* the game's sub-types in `tagId` form, when it defines any */
     private readonly subTypes: Array<string> | undefined;
+    /* the game's traits in `tagId` form, when it defines any */
+    private readonly definedTraits: Array<string> | undefined;
 
     constructor(private readonly set: GameDataSet) {
         this.subTypes = subTypeTags(set.game.data);
+        this.definedTraits = definedTraits(set.game.data);
     }
 
     private file = '';
@@ -227,6 +232,20 @@ class Validator {
                 this.report(
                     `${path}/tags`,
                     `the tag '${tag}' matches no sub-type${didYouMean(tagId(tag), subTypes)}`,
+                    'warning'
+                );
+        }
+    }
+
+    /* With game `traits`: a trait that matches none is a warning */
+    private traits(path: string, traits: ReadonlyArray<string> | undefined) {
+        const defined = this.definedTraits;
+        if (!defined) return;
+        for (const trait of traits ?? []) {
+            if (trait.trim() && !defined.includes(tagId(trait)))
+                this.report(
+                    path,
+                    `the game defines no trait '${trait}'${didYouMean(tagId(trait), defined)}`,
                     'warning'
                 );
         }
@@ -302,6 +321,53 @@ class Validator {
     ) {
         if (typeof value === 'string')
             this.expression(path, value, scopes, 'number', vocabulary);
+    }
+
+    /* A file's own `version`: a warning when it isn't `major.minor.patch` */
+    private version(version: string) {
+        if (!isRelease(version))
+            this.report(
+                'version',
+                `'${version}' isn't a version number like 1.2.0, so version ranges can't be checked against it`,
+                'warning'
+            );
+    }
+
+    /*
+     * A version range and the version it is about: a warning when the range
+     * can't be read, or when it leaves that version out
+     */
+    private versionRange(
+        path: string,
+        range: string | undefined,
+        what: string,
+        version: string
+    ) {
+        if (range === undefined) return;
+        if (!isVersionRange(range)) {
+            this.report(
+                path,
+                `'${range}' can't be read as a version range like '>=1.2.0 <2.0.0'`,
+                'warning'
+            );
+            return;
+        }
+        if (satisfiesRange(version, range) === false)
+            this.report(
+                path,
+                `${what} is version ${version}, which '${range}' leaves out`,
+                'warning'
+            );
+    }
+
+    /* A fixed `min` above a fixed `max` can never be met */
+    private minMax(
+        path: string,
+        min: NumberOrExpr | undefined,
+        max: NumberOrExpr | undefined
+    ) {
+        if (typeof min === 'number' && typeof max === 'number' && min > max)
+            this.report(path, `min ${min} is more than max ${max}`);
     }
 
     private condition(
@@ -414,10 +480,12 @@ class Validator {
     }
 
     private gameSystem(game: GameSystem) {
+        this.version(game.version);
         for (const kind of [
             'roles',
             'unitTypes',
             'subTypes',
+            'traits',
             'groupTypes',
             'slotTags',
             'resources',
@@ -485,6 +553,12 @@ class Validator {
                         t,
                         groupTypes
                     );
+                if (type.source !== undefined)
+                    this.report(
+                        `groupTypes/${type.id}/source`,
+                        "source is only read for a root group type; a linked one shares its root's",
+                        'warning'
+                    );
             }
         }
         for (const id of keys(game.groups)) {
@@ -513,6 +587,21 @@ class Validator {
                         unitStats
                     );
             }
+            // fields read for one scope only
+            const only = (
+                field: 'capacityStat' | 'defaultLimit' | 'message',
+                scope: Resource['scope']
+            ) => {
+                if (resource[field] !== undefined && resource.scope !== scope)
+                    this.report(
+                        `resources/${resource.id}/${field}`,
+                        `${field} is only read for a ${scope} resource, not a ${resource.scope} one`,
+                        'warning'
+                    );
+            };
+            only('capacityStat', 'unit');
+            only('defaultLimit', 'list');
+            only('message', 'contingent');
         }
 
         const scope = this.scopeFor([]);
@@ -530,6 +619,7 @@ class Validator {
                 FIELD_SCOPES.list,
                 vocabulary
             );
+            this.minMax(`groupTypes/${type.id}`, type.min, type.max);
         }
 
         this.listRules(game.listRules, scope);
@@ -567,10 +657,18 @@ class Validator {
 
     private faction(faction: Faction) {
         const game = this.set.game.data;
+        this.version(faction.version);
         if (faction.game.id !== game.id)
             this.report(
                 'game',
                 `this faction is for '${faction.game.id}', not '${game.id}'`
+            );
+        else
+            this.versionRange(
+                'game/versions',
+                faction.game.versions,
+                `the game '${game.id}'`,
+                game.version
             );
         for (const kind of RECORD_KINDS)
             this.ids(
@@ -724,6 +822,13 @@ class Validator {
             );
             return;
         }
+        this.version(sub.version);
+        this.versionRange(
+            'parent/versions',
+            sub.parent.versions,
+            `the faction '${parent.id}'`,
+            parent.version
+        );
         for (const kind of RECORD_KINDS)
             this.ids(
                 kind,
@@ -915,6 +1020,7 @@ class Validator {
         this.known(path, 'role', unit.role, keys(game.roles));
         this.known(path, 'unit type', unit.type, keys(game.unitTypes));
         this.tags(path, unit.tags);
+        this.traits(`${path}/traits`, unit.traits);
         this.costs(`${path}/cost`, unit.cost, scope, FIELD_SCOPES.unit, 'unit');
         if (unit.additionalModels)
             this.costs(
@@ -944,6 +1050,7 @@ class Validator {
             if (profile.type)
                 this.known(at, 'unit type', profile.type, keys(game.unitTypes));
             this.tags(at, profile.tags);
+            this.traits(`${at}/traits`, profile.traits);
             profile.specialRules?.forEach((s) => this.rule(at, s, scope));
         });
 
@@ -1554,6 +1661,15 @@ class Validator {
         }
         if (upgrade.perModel.type === 'one-in-x' && !upgrade.perModel.everyX)
             this.report(path, "a 'one-in-x' upgrade needs everyX");
+        if (
+            upgrade.perModel.type !== 'one-in-x' &&
+            upgrade.perModel.everyX !== undefined
+        )
+            this.report(
+                `${path}/perModel/everyX`,
+                `everyX is only read for perModel.type 'one-in-x', not '${upgrade.perModel.type}'`,
+                'warning'
+            );
         this.perModelCount(`${path}/perModel`, upgrade);
         this.gearNote(`${path}/gearNote`, upgrade.gearNote);
         if (upgrade.gearNote?.trim() && !this.givesGear(upgrade, scope))
@@ -1580,6 +1696,7 @@ class Validator {
         );
         this.numberOrExpr(`${path}/min`, upgrade.min, scopes, scope.vocabulary);
         this.numberOrExpr(`${path}/max`, upgrade.max, scopes, scope.vocabulary);
+        this.minMax(path, upgrade.min, upgrade.max);
 
         const optionScopes: Array<BuiltInScope> = ['option', ...scopes];
         for (const option of Object.values(upgrade.options) as Array<
@@ -1682,6 +1799,11 @@ class Validator {
             this.report(path, 'a trait effect needs add, remove or replace');
         if (replace && !replace.from.length)
             this.report(path, 'replace needs at least one trait in from');
+        this.traits(path, [
+            ...add,
+            ...remove,
+            ...(replace ? [...replace.from, replace.to] : []),
+        ]);
         const removed = [...remove, ...(replace?.from ?? [])].map(tagId);
         for (const trait of [...add, ...(replace ? [replace.to] : [])]) {
             if (!trait.trim()) this.report(path, 'a trait needs a name');
@@ -1721,14 +1843,16 @@ class Validator {
             m.roles?.forEach((r) =>
                 this.known(at, 'role', r, keys(scope.game.roles))
             );
-            for (const trait of m.traits ?? []) {
-                if (!traits.includes(tagId(trait)))
-                    this.report(
-                        at,
-                        `no unit has or is given the trait '${trait}'${didYouMean(tagId(trait), traits)}`,
-                        'warning'
-                    );
-            }
+            if (this.definedTraits) this.traits(at, m.traits);
+            else
+                for (const trait of m.traits ?? []) {
+                    if (!traits.includes(tagId(trait)))
+                        this.report(
+                            at,
+                            `no unit has or is given the trait '${trait}'${didYouMean(tagId(trait), traits)}`,
+                            'warning'
+                        );
+                }
         };
         match(path, selector);
         selector.exclude?.forEach((e, i) => match(`${path}/exclude/${i}`, e));
@@ -1841,13 +1965,19 @@ class Validator {
                     FIELD_SCOPES.slot,
                     scope.vocabulary
                 );
-                if (slot.repeat)
+                if (slot.repeat) {
                     this.numberOrExpr(
                         `${s}/repeat/max`,
                         slot.repeat.max,
                         FIELD_SCOPES.slot,
                         scope.vocabulary
                     );
+                    this.minMax(
+                        `${s}/repeat`,
+                        slot.repeat.min,
+                        slot.repeat.max
+                    );
+                }
             });
             group.requires?.forEach((r, i) =>
                 this.selector(`${at}/requires/${i}`, r.units, scope)
@@ -1870,6 +2000,7 @@ class Validator {
                 FIELD_SCOPES.groupLimit,
                 scope.vocabulary
             );
+            this.minMax(at, group.min, group.max);
             if (group.cost)
                 this.costs(
                     `${at}/cost`,
@@ -2029,6 +2160,7 @@ class Validator {
                         scopes,
                         vocabulary
                     );
+                    this.minMax(path, rule.min, rule.max);
                     break;
                 }
                 case 'expression':

@@ -67,6 +67,34 @@
         },
         "elite": { "id": "elite", "name": "Elite" }
     },
+    "traits": {
+        "field-army": {
+            "id": "field-army",
+            "name": "Field Army",
+            "description": "Every unit of the Field Army has this trait; a unit borrowed from another faction does not."
+        },
+        "foundry": { "id": "foundry", "name": "Foundry" },
+        "bonded-constructs": { "id": "bonded-constructs", "name": "Bonded Constructs" },
+        "disciplined": { "id": "disciplined", "name": "Disciplined" },
+        "veterans": { "id": "veterans", "name": "Veterans" },
+        "veteran-corps": { "id": "veteran-corps", "name": "Veteran Corps" },
+        "shield": {
+            "id": "shield",
+            "name": "Shield",
+            "description": "Only the models carrying a shield have this trait."
+        },
+        "tower-shield": { "id": "tower-shield", "name": "Tower Shield" },
+        "spotter": { "id": "spotter", "name": "Spotter" },
+        "spearhead": { "id": "spearhead", "name": "Spearhead" },
+        "gun-line": { "id": "gun-line", "name": "Gun Line" },
+        "promoted": { "id": "promoted", "name": "Promoted" },
+        "assault-troops": {
+            "id": "assault-troops",
+            "name": "Assault Troops",
+            "description": "Given to line troops while the list takes the offensive stance."
+        },
+        "dug-in": { "id": "dug-in", "name": "Dug In" }
+    },
     "groupTypes": {
         "core": {
             "id": "core",

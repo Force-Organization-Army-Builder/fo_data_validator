@@ -43,6 +43,22 @@ export function subTypeTags(game: GameSystem): Array<string> | undefined {
     ];
 }
 
+/**
+ * The game's traits as the `tagId` forms a trait may match them by (each
+ * one's id and name), or undefined when the game defines no `traits`
+ */
+export function definedTraits(game: GameSystem): Array<string> | undefined {
+    if (!game.traits) return undefined;
+    return [
+        ...new Set(
+            Object.values(game.traits).flatMap((t) => [
+                tagId(t.id),
+                tagId(t.name),
+            ])
+        ),
+    ];
+}
+
 /* Unit and profile tags used anywhere in the records */
 function tagsOf(records: Array<Partial<FactionRecords>>) {
     const tags = new Set<string>();
@@ -143,6 +159,7 @@ export function buildVocabulary(
         tags: tagsOf(records),
         subTypes: subTypeTags(game),
         traits: traitsOf([game, ...records, ...factions, ...subFactions]),
+        definedTraits: definedTraits(game),
         resources: Object.fromEntries(
             Object.values(game.resources).map((r) => [r.id, r.scope])
         ),

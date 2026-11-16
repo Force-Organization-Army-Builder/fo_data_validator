@@ -366,7 +366,7 @@ describe('traits', () => {
             };
         });
         assert.deepEqual(issues, [
-            "warning sub-factions/veterans.json unitModifiers/veteran-corps: no unit has or is given the trait 'Disiplined' (did you mean 'disciplined'?)",
+            "warning sub-factions/veterans.json unitModifiers/veteran-corps: the game defines no trait 'Disiplined' (did you mean 'disciplined'?)",
         ]);
     });
 
@@ -451,7 +451,7 @@ describe('slots filled from another faction', () => {
         assert.deepEqual(issues, [
             'error factions/field-army.json specialRules/construct-handler/slots/0: a slot needs at least one role',
             "error factions/field-army.json specialRules/construct-handler/slots/0/effects/1: unknown special rule 'stubborn'",
-            "warning sub-factions/veterans.json slotOptions/borrowed-specialists/effects/0/exclude/0: no unit has or is given the trait 'Veteranz' (did you mean 'veterans'?)",
+            "warning sub-factions/veterans.json slotOptions/borrowed-specialists/effects/0/exclude/0: the game defines no trait 'Veteranz' (did you mean 'veterans'?)",
         ]);
     });
 
@@ -1092,7 +1092,8 @@ describe('upgrade mirrorOf', () => {
     it("allows only 'every' and 'single'", async () => {
         for (const type of ['some', 'multiple', 'one-in-x'] as const) {
             const issues = await issuesAfter((set) => {
-                foreman(set).perModel = { type, everyX: 5 };
+                foreman(set).perModel =
+                    type === 'one-in-x' ? { type, everyX: 5 } : { type };
             });
             assert.deepEqual(issues, [
                 `error ${at}/perModel: a mirror's perModel.type must be 'every' or 'single', not '${type}': its amount follows its own profile, so it can't be a number of picks the player chooses`,
@@ -1281,7 +1282,7 @@ describe('list choice value effects', () => {
                 { kind: 'trait' },
                 {
                     kind: 'trait',
-                    add: ['Zealous'],
+                    add: ['Dug In'],
                     when: {
                         if: 'profile.is(tag:sergeant)',
                         message: 'Sergeants only',
@@ -1315,7 +1316,7 @@ describe('list choice value effects', () => {
         assert.deepEqual(issues, [
             `error ${at}/offensive/units: unknown selector 'line-trops'`,
             `error ${at}/defensive/units: unknown role 'trop'`,
-            `warning ${at}/defensive/units: no unit has or is given the trait 'Nobody Has This'`,
+            `warning ${at}/defensive/units: the game defines no trait 'Nobody Has This'`,
         ]);
     });
 
@@ -1444,5 +1445,216 @@ describe('empty records and mismatched values', () => {
             set.subFactions.push(copy);
         });
         assert.deepEqual(about(issues, 'is also in'), []);
+    });
+});
+
+describe('a fixed min above a fixed max', () => {
+    it('is reported on group types, groups, slot repeats and upgrades', async () => {
+        const issues = await issuesAfter((set) => {
+            const [typeId] = Object.keys(set.game.data.groupTypes);
+            Object.assign(set.game.data.groupTypes[typeId], { min: 3, max: 1 });
+            const faction = set.factions.find(
+                (f) => f.data.id === 'field-army'
+            )!.data;
+            const [group] = Object.values(faction.groups!);
+            Object.assign(group, { min: 2, max: 1 });
+            group.slots[0].repeat = { min: 4, max: 2 };
+            Object.assign(faction.units['squad'].upgrades!['trooper-sidearm'], {
+                min: 2,
+                max: 1,
+            });
+        });
+        assert.deepEqual(
+            issues
+                .filter((i) => i.includes('is more than max'))
+                .map((i) => i.replace(/^.*: /, '')),
+            [
+                'min 3 is more than max 1',
+                'min 2 is more than max 1',
+                'min 4 is more than max 2',
+                'min 2 is more than max 1',
+            ]
+        );
+    });
+
+    it('is left alone when either is an expression', async () => {
+        const issues = await issuesAfter((set) => {
+            const [typeId] = Object.keys(set.game.data.groupTypes);
+            Object.assign(set.game.data.groupTypes[typeId], {
+                min: 3,
+                max: 'list.count(*)',
+            });
+        });
+        assert.deepEqual(
+            issues.filter((i) => i.includes('is more than max')),
+            []
+        );
+    });
+});
+
+describe('fields read under one setting only', () => {
+    it('warns about resource fields of another scope', async () => {
+        const issues = await issuesAfter((set) => {
+            const resources = set.game.data.resources;
+            const list = Object.values(resources).find(
+                (r) => r.scope === 'list'
+            )!;
+            list.capacityStat = 'capacity';
+            list.message = 'Too much';
+            const contingent = Object.values(resources).find(
+                (r) => r.scope === 'contingent'
+            )!;
+            contingent.defaultLimit = 3;
+        });
+        assert.deepEqual(
+            issues.map((i) => i.replace(/^.*resources\/[a-z-]+\//, '')),
+            [
+                'capacityStat: capacityStat is only read for a unit resource, not a list one',
+                'message: message is only read for a contingent resource, not a list one',
+                'defaultLimit: defaultLimit is only read for a list resource, not a contingent one',
+            ]
+        );
+    });
+
+    it('warns about a source on a linked group type', async () => {
+        const issues = await issuesAfter((set) => {
+            const linked = Object.values(set.game.data.groupTypes).find(
+                (t) => typeof t.contingent === 'object'
+            )!;
+            linked.source = 'ally';
+        });
+        assert.equal(issues.length, 1);
+        assert.match(
+            issues[0],
+            /^warning game\.json groupTypes\/[a-z-]+\/source: source is only read for a root group type/
+        );
+    });
+
+    it('warns about everyX on an upgrade that is not one-in-x', async () => {
+        const issues = await issuesAfter((set) => {
+            const squad = set.factions.find((f) => f.data.id === 'field-army')!
+                .data.units['squad'];
+            const upgrade = Object.values(squad.upgrades!).find(
+                (u) => u.perModel.type !== 'one-in-x'
+            )!;
+            upgrade.perModel.everyX = 5;
+        });
+        assert.equal(issues.length, 1);
+        assert.match(
+            issues[0],
+            /perModel\/everyX: everyX is only read for perModel\.type 'one-in-x', not '/
+        );
+    });
+});
+
+describe('the trait registry', () => {
+    const squad = (set: GameDataSet) =>
+        set.factions.find((f) => f.data.id === 'field-army')!.data.units[
+            'squad'
+        ];
+
+    it('accepts traits by name or id, in any case', async () => {
+        const issues = await issuesAfter((set) => {
+            squad(set).traits = ['field army', 'FIELD-ARMY', 'Dug In'];
+        });
+        assert.deepEqual(issues, []);
+    });
+
+    it('warns about a unit, profile or effect trait the game does not define', async () => {
+        const issues = await issuesAfter((set) => {
+            squad(set).traits = ['Field Army', 'Feild Army'];
+            squad(set).profiles[0].traits = ['Sheild'];
+            set.game.data.choices!['stance'].values['offensive'].effects = [
+                {
+                    kind: 'trait',
+                    add: ['Dug Inn'],
+                    remove: ['Spoter'],
+                    replace: { from: ['Promotd'], to: 'Gun Lime' },
+                },
+            ];
+        });
+        assert.deepEqual(issues, [
+            "warning game.json choices/stance/values/offensive/effects/0: the game defines no trait 'Dug Inn' (did you mean 'dug-in'?)",
+            "warning game.json choices/stance/values/offensive/effects/0: the game defines no trait 'Spoter' (did you mean 'spotter'?)",
+            "warning game.json choices/stance/values/offensive/effects/0: the game defines no trait 'Promotd' (did you mean 'promoted'?)",
+            "warning game.json choices/stance/values/offensive/effects/0: the game defines no trait 'Gun Lime' (did you mean 'gun-line'?)",
+            "warning factions/field-army.json units/squad/traits: the game defines no trait 'Feild Army' (did you mean 'field-army'?)",
+            "warning factions/field-army.json units/squad/profiles/trooper/traits: the game defines no trait 'Sheild' (did you mean 'shield'?)",
+        ]);
+    });
+
+    it('warns about a trait: reference the game does not define', async () => {
+        const issues = await issuesAfter((set) => {
+            squad(set).when = {
+                if: 'unit.is(trait:feild-army)',
+                message: 'Field Army only',
+            };
+        });
+        assert.deepEqual(issues, [
+            "warning factions/field-army.json units/squad/when: the game defines no trait 'feild-army' (did you mean 'field-army'?)",
+        ]);
+    });
+
+    it('checks trait ids against their keys', async () => {
+        const issues = await issuesAfter((set) => {
+            set.game.data.traits!['spotter'].id = 'spoter';
+        });
+        assert.deepEqual(issues, [
+            "error game.json traits/spotter: id is 'spoter', but the key is 'spotter'",
+        ]);
+    });
+
+    it('without a registry, checks traits against the ones in use', async () => {
+        const issues = await issuesAfter((set) => {
+            delete set.game.data.traits;
+            squad(set).traits = [...(squad(set).traits ?? []), 'Brand New'];
+            set.factions[0].data.selectors!['fresh'] = {
+                id: 'fresh',
+                name: 'Fresh',
+                match: { traits: ['Brand New', 'Nobody Has This'] },
+            };
+        });
+        assert.deepEqual(
+            issues.map((i) => i.replace(/^.*: /, '')),
+            ["no unit has or is given the trait 'Nobody Has This'"]
+        );
+    });
+});
+
+describe('versions and version ranges', () => {
+    const fieldArmy = (set: GameDataSet) =>
+        set.factions.find((f) => f.data.id === 'field-army')!.data;
+
+    it("warns when a faction's range leaves out the game's version", async () => {
+        const issues = await issuesAfter((set) => {
+            set.game.data.version = '2.1.0';
+        });
+        // every faction of the game, the extension source's too
+        assert.ok(issues.length >= 2);
+        for (const issue of issues)
+            assert.match(
+                issue,
+                /^warning factions\/[a-z-]+\.json game\/versions: the game 'full-game' is version 2\.1\.0, which '>=1\.0\.0 <2\.0\.0' leaves out$/
+            );
+    });
+
+    it("warns when a sub-faction's range leaves out its parent's version", async () => {
+        const issues = await issuesAfter((set) => {
+            sub(set, 'veterans').parent.versions = '<1.0.0';
+        });
+        assert.deepEqual(issues, [
+            "warning sub-factions/veterans.json parent/versions: the faction 'field-army' is version 1.0.0, which '<1.0.0' leaves out",
+        ]);
+    });
+
+    it("warns about a range it can't read and a version that isn't one", async () => {
+        const issues = await issuesAfter((set) => {
+            fieldArmy(set).game.versions = 'any';
+            sub(set, 'veterans').version = 'draft';
+        });
+        assert.deepEqual(issues, [
+            "warning factions/field-army.json game/versions: 'any' can't be read as a version range like '>=1.2.0 <2.0.0'",
+            "warning sub-factions/veterans.json version: 'draft' isn't a version number like 1.2.0, so version ranges can't be checked against it",
+        ]);
     });
 });
