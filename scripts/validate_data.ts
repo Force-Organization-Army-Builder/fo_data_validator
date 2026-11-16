@@ -3,7 +3,12 @@ import path from 'node:path';
 
 import { formatDiagnostic } from '../src/expressions/diagnostics';
 import { MANIFEST_FILE, readSource } from '../src/game_data/read_source';
-import { checkManifestVersions } from '../src/game_data/versions';
+import {
+    checkManifestVersions,
+    isRelease,
+    isVersionRange,
+    satisfiesRange,
+} from '../src/game_data/versions';
 import { DataIssue, validateGameData } from '../src/game_data/validate';
 import { checkShapes, ShapeFile } from '../src/game_data/shape';
 
@@ -76,16 +81,36 @@ async function main() {
     }
 
     // extension sources add their files to the game they extend
-    for (const extension of sources.flatMap((source) => source.extensions)) {
-        const set = sets.find(({ game }) => game.data.id === extension.game);
-        if (!set) {
-            console.error(
-                `A source extends the game '${extension.game}', but no source provides it.`
+    const bindingIssues: Array<DataIssue> = [];
+    for (const [index, source] of sources.entries()) {
+        for (const [e, extension] of source.extensions.entries()) {
+            const set = sets.find(
+                ({ game }) => game.data.id === extension.game
             );
-            return 2;
+            if (!set) {
+                console.error(
+                    `A source extends the game '${extension.game}', but no source provides it.`
+                );
+                return 2;
+            }
+            // the range is read here, where the game it binds to is known
+            const version = set.game.data.version;
+            const met =
+                typeof extension.versions === 'string'
+                    ? satisfiesRange(version, extension.versions)
+                    : true; // the shape check reports a range that isn't text
+            if (met !== true && isRelease(version))
+                bindingIssues.push({
+                    severity: 'warning',
+                    file: manifestLabel(index),
+                    path: `extends/${e}/versions`,
+                    message: isVersionRange(extension.versions)
+                        ? `the game '${extension.game}' is version ${version}, which '${extension.versions}' leaves out`
+                        : `'${extension.versions}' can't be read as a version range like '>=1.2.0 <2.0.0'`,
+                });
+            set.factions.push(...extension.factions);
+            set.subFactions.push(...extension.subFactions);
         }
-        set.factions.push(...extension.factions);
-        set.subFactions.push(...extension.subFactions);
     }
 
     // files with the wrong shape would crash the data checker, so they go first
@@ -112,6 +137,7 @@ async function main() {
     // version warnings are reported with whatever comes next
     const issues = [
         ...versionIssues,
+        ...bindingIssues,
         ...(shapeIssues.length > 0
             ? shapeIssues
             : sets.flatMap(validateGameData)),

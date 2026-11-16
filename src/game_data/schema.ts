@@ -56,6 +56,28 @@ export const NumberOrExprSchema = z
     .union([z.number(), ExprSchema])
     .describe('A plain number, or an expression that evaluates to one');
 
+/*
+ * Counts: whole numbers. A message on each so a shape error says what the
+ * field takes, not only what it got.
+ */
+const WHOLE = 'a whole number, 0 or more';
+const POSITIVE_WHOLE = 'a whole number, 1 or more';
+
+/** How many of something, where none is allowed: 0, 1, 2, … */
+export const WholeNumberSchema = z.number().int(WHOLE).min(0, WHOLE);
+
+/** How many of something there must be at least one of: 1, 2, 3, … */
+export const PositiveWholeNumberSchema = z
+    .number()
+    .int(POSITIVE_WHOLE)
+    .min(1, POSITIVE_WHOLE);
+
+export const CountOrExprSchema = z
+    .union([WholeNumberSchema, ExprSchema])
+    .describe(
+        'A whole number (0 or more), or an expression that evaluates to a number'
+    );
+
 export const VersionRangeSchema = z
     .string()
     .describe('A semver range a version must satisfy, e.g. `>=1.2.0 <2.0.0`');
@@ -341,6 +363,12 @@ export const SubTypeSchema = z
         'A unit sub-type, given to units and profiles as a `tags` entry matching its name (case-insensitively) or id; `description` holds the rules every model with the sub-type follows'
     );
 
+export const TraitSchema = z
+    .strictObject({ ...named, id: SlugSchema })
+    .describe(
+        'A unit trait, given to units and profiles as a `traits` entry matching its name (case-insensitively) or id; `description` holds what the trait means'
+    );
+
 export const GroupTypeSchema = z.strictObject({
     ...named,
     id: SlugSchema,
@@ -358,10 +386,10 @@ export const GroupTypeSchema = z.strictObject({
         .describe(
             "root groups only: `main` uses the list's main faction and sub-faction, `ally` a different one the player picks. Left out = `main`"
         ),
-    min: NumberOrExprSchema.optional().describe(
+    min: CountOrExprSchema.optional().describe(
         'how many of this type a list may hold (at least)'
     ),
-    max: NumberOrExprSchema.optional().describe(
+    max: CountOrExprSchema.optional().describe(
         'how many of this type a list may hold (at most)'
     ),
     cost: CostsSchema.optional().describe(
@@ -513,8 +541,8 @@ export const CountRuleSchema = z
         units: UnitSelectorOrRefSchema.optional(),
         groupTypes: z.array(SlugSchema).optional(),
         scope: z.enum(['group', 'contingent', 'list']),
-        min: NumberOrExprSchema.optional(),
-        max: NumberOrExprSchema.optional(),
+        min: CountOrExprSchema.optional(),
+        max: CountOrExprSchema.optional(),
         message: z.string(),
     })
     .describe('Limits how many matching units (or groups) a scope may hold');
@@ -590,7 +618,7 @@ export const GearConditionSchema = z
 export const GearLimitSchema = z
     .strictObject({
         ...GearConditionSchema.shape,
-        count: z.number(),
+        count: z.number().positive('a number above 0'),
     })
     .describe(
         'An upgrade may be picked `count` times for each of this gear the unit has'
@@ -669,7 +697,7 @@ export const OptionSchema = z.strictObject({
             'applied to the unit while the option is picked, e.g. armour plating raising armour'
         ),
     when: ConditionSchema.optional(),
-    max: NumberOrExprSchema.optional(),
+    max: CountOrExprSchema.optional(),
 });
 
 export const UpgradeReferenceSchema = z.strictObject({
@@ -684,14 +712,11 @@ export const PerModelConfigSchema = z.strictObject({
         .describe(
             'single: once for the unit or one model; multiple: any number of times; every: every model gets it; some: any number of models; one-in-x: `count` (default 1) per `everyX` models'
         ),
-    everyX: z.number().optional(),
-    count: z
-        .number()
-        .optional()
-        .describe(
-            'one-in-x only: picks allowed per `everyX` models (default 1), a positive whole number; the cap is count × floor(models / everyX), e.g. `{ "type": "one-in-x", "everyX": 5, "count": 2 }` for \'for every five Models, up to two Models may each…\''
-        ),
-    max: z.number().optional(),
+    everyX: PositiveWholeNumberSchema.optional(),
+    count: PositiveWholeNumberSchema.optional().describe(
+        'one-in-x only: picks allowed per `everyX` models (default 1), a positive whole number; the cap is count × floor(models / everyX), e.g. `{ "type": "one-in-x", "everyX": 5, "count": 2 }` for \'for every five Models, up to two Models may each…\''
+    ),
+    max: WholeNumberSchema.optional(),
     excludeProfiles: ProfileFilterSchema.optional().describe(
         'profiles not counted as models for this upgrade'
     ),
@@ -708,8 +733,8 @@ const upgradeShape = {
         'id of the option picked by default'
     ),
     perModel: PerModelConfigSchema,
-    min: NumberOrExprSchema.optional(),
-    max: NumberOrExprSchema.optional(),
+    min: CountOrExprSchema.optional(),
+    max: CountOrExprSchema.optional(),
     restrictions: RestrictionsSchema.optional(),
     replaces: z
         .array(SlugSchema)
@@ -740,7 +765,7 @@ export const UpgradeSchema = z.strictObject({
     swapFrom: z
         .strictObject({
             ...GearRefSchema.shape,
-            count: z.number().optional(),
+            count: PositiveWholeNumberSchema.optional(),
         })
         .optional()
         .describe(
@@ -827,17 +852,14 @@ export const CompositionBlockSchema = z
             'unique within the unit; the key a saved list stores the number of copies under'
         ),
         profiles: z
-            .record(SlugSchema, z.number())
+            .record(SlugSchema, PositiveWholeNumberSchema)
             .describe(
                 'profile id → how many models of it one copy of the block holds, e.g. `{ "gunner": 1, "loader": 1 }`'
             ),
-        min: z
-            .number()
-            .optional()
-            .describe(
-                'copies in the unit as bought for its `cost`; left out = 1'
-            ),
-        max: NumberOrExprSchema.optional().describe(
+        min: WholeNumberSchema.optional().describe(
+            'copies in the unit as bought for its `cost`; left out = 1'
+        ),
+        max: CountOrExprSchema.optional().describe(
             "most copies the unit may hold; left out = `min`. An expression (validator 1.10.0) is evaluated live for the unit as it stands, in the unit's scopes, e.g. `floor(unit.models() / 5)` on a block that `replaces` models; only a block with `replaces` may read `unit.models()`"
         ),
         cost: CostsSchema.optional().describe(
@@ -873,13 +895,11 @@ export const UnitSchema = z.strictObject({
             'keywords and sub-types, matched by `tag:` references and profile filters; free text, though when the game defines `subTypes` a tag that matches none is a warning'
         ),
     cost: CostsSchema,
-    modelCount: z
-        .number()
-        .describe(
-            'models in the unit as bought for its `cost`; with `composition`, the sum over its blocks of `min` × models per copy'
-        ),
+    modelCount: PositiveWholeNumberSchema.describe(
+        'models in the unit as bought for its `cost`; with `composition`, the sum over its blocks of `min` × models per copy'
+    ),
     additionalModels: z
-        .strictObject({ max: z.number(), cost: CostsSchema })
+        .strictObject({ max: PositiveWholeNumberSchema, cost: CostsSchema })
         .optional()
         .describe(
             'up to `max` more models at `cost` each, of no particular profile; not used with `composition`'
@@ -902,7 +922,7 @@ export const UnitSchema = z.strictObject({
     when: ConditionSchema.optional().describe('when the unit may be taken'),
     limit: z
         .strictObject({
-            max: NumberOrExprSchema,
+            max: CountOrExprSchema,
             scope: z.enum(['group', 'contingent', 'list']),
             message: z.string().optional(),
         })
@@ -955,8 +975,8 @@ export const SlotSchema = z.strictObject({
         .describe('must be filled for the list to be valid (compulsory slots)'),
     repeat: z
         .strictObject({
-            min: z.number().optional(),
-            max: NumberOrExprSchema.optional(),
+            min: WholeNumberSchema.optional(),
+            max: CountOrExprSchema.optional(),
         })
         .optional()
         .describe(
@@ -973,10 +993,9 @@ export const SlotSchema = z.strictObject({
 export const GroupRequirementSchema = z
     .strictObject({
         units: UnitSelectorOrRefSchema,
-        count: z
-            .number()
-            .optional()
-            .describe('matching units needed; left out = 1'),
+        count: PositiveWholeNumberSchema.optional().describe(
+            'matching units needed; left out = 1'
+        ),
         scope: z
             .enum(['contingent', 'root'])
             .optional()
@@ -1007,10 +1026,10 @@ export const GroupSchema = z.strictObject({
         .optional()
         .describe("shown when a requirement isn't met"),
     when: ConditionSchema.optional(),
-    min: NumberOrExprSchema.optional().describe(
+    min: CountOrExprSchema.optional().describe(
         'how many of this group a list must hold, e.g. a mandatory veteran formation'
     ),
-    max: NumberOrExprSchema.optional().describe(
+    max: CountOrExprSchema.optional().describe(
         'how many of this group a list may hold'
     ),
     cost: CostsSchema.optional().describe("replaces its group type's `cost`"),
@@ -1089,6 +1108,12 @@ export const GameSystemSchema = z.strictObject({
         .optional()
         .describe(
             'unit sub-types (validator 1.12.0); when set, unit and profile `tags`, `tag:` references and profile filter values that match no sub-type (or unit type) are warnings'
+        ),
+    traits: z
+        .record(SlugSchema, TraitSchema)
+        .optional()
+        .describe(
+            'unit traits (validator 2.0.0); when set, unit and profile `traits`, the traits effects give or take, selector `traits` and `trait:` references that match no trait here are warnings'
         ),
     groupTypes: z
         .record(SlugSchema, GroupTypeSchema)
@@ -1177,10 +1202,10 @@ export const SubFactionGroupSchema = z
     .strictObject({
         ...named,
         id: SlugSchema,
-        min: NumberOrExprSchema.optional().describe(
+        min: CountOrExprSchema.optional().describe(
             'how many sub-factions of this group a contingent must take; left out = 0. Expressions may use `contingent`, `root`, `main` and `list`'
         ),
-        max: NumberOrExprSchema.optional().describe(
+        max: CountOrExprSchema.optional().describe(
             'how many sub-factions of this group a contingent may take; left out = 1. Expressions may use `contingent`, `root`, `main` and `list`, e.g. `1 + (list.has(unit:x) ? 1 : 0)`'
         ),
     })

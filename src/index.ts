@@ -10,6 +10,9 @@ export type { ShapeFile, ShapeIssue, ShapeKind } from './game_data/shape';
 export {
     VALIDATOR_VERSION,
     compareReleases,
+    isRelease,
+    isVersionRange,
+    satisfiesRange,
     SCHEMA_VERSION,
     OLDEST_SCHEMA_VERSION,
     EXPRESSION_VERSION,

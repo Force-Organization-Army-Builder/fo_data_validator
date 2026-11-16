@@ -269,3 +269,68 @@ describe('checkShapes', () => {
         assert.ok(issues.some((i) => i.startsWith('group: ')));
     });
 });
+
+describe('counts', () => {
+    type Loose = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+
+    /* changes one unit of the example faction and returns what the check says */
+    async function issuesAfter(unit: string, change: (unit: Loose) => void) {
+        const all = await files();
+        const faction = all.find((f) => f.kind === 'Faction')!;
+        change((faction.data as Loose).units[unit]);
+        return checkShapes(all).map((i) => `${i.path}: ${i.message}`);
+    }
+
+    it('takes whole model counts only, at least 1', async () => {
+        for (const modelCount of [0, -5, 2.5]) {
+            assert.deepEqual(
+                await issuesAfter('squad', (u) => (u.modelCount = modelCount)),
+                ['units/squad/modelCount: a whole number, 1 or more']
+            );
+        }
+    });
+
+    it('takes a whole number of additional models, at least 1', async () => {
+        assert.deepEqual(
+            await issuesAfter('carrier', (u) => {
+                u.additionalModels = { max: -1, cost: { points: 10 } };
+            }),
+            ['units/carrier/additionalModels/max: a whole number, 1 or more']
+        );
+    });
+
+    it('takes a whole everyX, at least 1', async () => {
+        for (const everyX of [0, 2.5]) {
+            assert.deepEqual(
+                await issuesAfter('squad', (u) => {
+                    u.upgrades['trooper-sidearm'].perModel = {
+                        type: 'one-in-x',
+                        everyX,
+                    };
+                }),
+                [
+                    'units/squad/upgrades/trooper-sidearm/perModel/everyX: a whole number, 1 or more',
+                ]
+            );
+        }
+    });
+
+    it('takes a min or max as a whole number or an expression', async () => {
+        const maxOf = (max: unknown) =>
+            issuesAfter('squad', (u) => {
+                u.upgrades['trooper-sidearm'].max = max;
+            });
+        assert.deepEqual(await maxOf(0), []);
+        assert.deepEqual(await maxOf('unit.models()'), []);
+        for (const max of [-1, 1.5]) {
+            assert.deepEqual(await maxOf(max), [
+                'units/squad/upgrades/trooper-sidearm/max: a whole number, 0 or more',
+            ]);
+        }
+    });
+
+    it('still takes a fraction where one is meant', async () => {
+        // the example's gear limit: one pick for every five of the gear
+        assert.deepEqual(await issuesAfter('squad', () => {}), []);
+    });
+});

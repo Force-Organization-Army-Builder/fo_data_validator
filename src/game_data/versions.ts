@@ -19,7 +19,7 @@ import type { DataIssue } from './validate';
  * This validator's release, as in package.json (a test keeps the two equal).
  * A literal, not a read of package.json, so this module stays browser-safe.
  */
-export const VALIDATOR_VERSION = '1.14.0';
+export const VALIDATOR_VERSION = '2.0.0';
 
 export const SCHEMA_VERSION = 1;
 export const OLDEST_SCHEMA_VERSION = 1;
@@ -160,3 +160,80 @@ export function checkManifestVersions(
     }
     return issues;
 }
+
+/** Whether the text is a `major.minor.patch` version */
+export const isRelease = (value: unknown): value is string =>
+    releaseParts(value) !== undefined;
+
+const COMPARATOR = /^(>=|<=|>|<|=|\^|~)?(\d+\.\d+\.\d+)$/;
+
+/* One comparator (`>=1.2.0`, `^1.2.0`, `1.2.0`) against a version, or undefined when unreadable */
+function meets(version: string, comparator: string): boolean | undefined {
+    if (comparator === '*') return true;
+    const match = COMPARATOR.exec(comparator);
+    if (!match) return undefined;
+    const [, op = '=', bound] = match;
+    const order = compareReleases(version, bound);
+    const [major, minor] = releaseParts(bound)!;
+    switch (op) {
+        case '>=':
+            return order >= 0;
+        case '<=':
+            return order <= 0;
+        case '>':
+            return order > 0;
+        case '<':
+            return order < 0;
+        case '^': {
+            // up to the next change of the leftmost number that isn't 0
+            const next =
+                major > 0
+                    ? `${major + 1}.0.0`
+                    : minor > 0
+                      ? `0.${minor + 1}.0`
+                      : undefined;
+            return next === undefined
+                ? order === 0
+                : order >= 0 && compareReleases(version, next) < 0;
+        }
+        case '~':
+            return (
+                order >= 0 &&
+                compareReleases(version, `${major}.${minor + 1}.0`) < 0
+            );
+        default:
+            return order === 0;
+    }
+}
+
+/**
+ * Whether a `major.minor.patch` version satisfies a version range, or
+ * undefined when either can't be read. A range is comparators separated by
+ * spaces, all of which must hold (`>=1.2.0 <2.0.0`); `||` separates
+ * alternatives. A comparator is a full version with `>=`, `<=`, `>`, `<`,
+ * `=`, `^` or `~` in front (none means `=`), or `*` for any version.
+ */
+export function satisfiesRange(
+    version: string,
+    range: string
+): boolean | undefined {
+    if (!isRelease(version)) return undefined;
+    const alternatives = range.split('||').map((part) => part.trim());
+    let any = false;
+    for (const alternative of alternatives) {
+        const comparators = alternative.split(/\s+/).filter(Boolean);
+        if (comparators.length === 0) return undefined;
+        let all = true;
+        for (const comparator of comparators) {
+            const met = meets(version, comparator);
+            if (met === undefined) return undefined;
+            all &&= met;
+        }
+        any ||= all;
+    }
+    return any;
+}
+
+/** Whether the text can be read as a version range by `satisfiesRange` */
+export const isVersionRange = (range: string): boolean =>
+    satisfiesRange('0.0.0', range) !== undefined;

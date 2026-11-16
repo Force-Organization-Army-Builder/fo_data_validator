@@ -22,7 +22,7 @@ node bin/fo-validate.mjs <source dir> [<extension source dir>] [--json]
 Exits 1 when there are errors. In a data repo, add this package as a dependency pinned to a release tag and run `npx fo-validate <source dir>`:
 
 ```json
-"@force-org/data-validator": "git+https://github.com/Force-Organization-Army-Builder/fo_data_validator.git#v1.0.0"
+"@force-org/data-validator": "git+https://github.com/Force-Organization-Army-Builder/fo_data_validator.git#v2.0.0"
 ```
 
 (Use the explicit `git+https` form, not the `github:` shorthand, which can resolve to SSH and fail on CI.) Nothing is published to the npm registry.
@@ -49,13 +49,13 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v7
-            - uses: Force-Organization-Army-Builder/fo_data_validator@v1
+            - uses: Force-Organization-Army-Builder/fo_data_validator@v2
               with:
                   source: . # folder holding forceorg.json
                   # extends: ../base-source # optional: an extension source to check against `source`
 ```
 
-`@v1` follows the newest `v1.x.x` tag (a moving major tag, see Releasing). Pin an exact tag such as `@v1.2.3` to freeze it.
+`@v2` follows the newest `v2.x.x` tag (a moving major tag, see Releasing). Pin an exact tag such as `@v2.0.0` to freeze it. `@v1` stays on the last 1.x release.
 
 ### Option B: `npx` with the pinned dependency
 
@@ -98,15 +98,15 @@ Each data file can point its editor at the matching JSON Schema for completion a
 
 ```json
 {
-    "$schema": "https://cdn.jsdelivr.net/gh/Force-Organization-Army-Builder/fo_data_validator@1/schema/faction.schema.json"
+    "$schema": "https://cdn.jsdelivr.net/gh/Force-Organization-Army-Builder/fo_data_validator@2/schema/faction.schema.json"
 }
 ```
 
 Files: `source-manifest`, `game`, `faction` and `sub-faction` (each `<name>.schema.json`).
 
-- `@1` resolves to the newest `1.x.x` tag, so the URL stays valid across minor and patch releases and changes only on a major bump (a data format or expression language change). Use an exact tag (`@1.2.3`) for a frozen schema; jsDelivr serves tags immutably.
-- `@1` is cached for up to 12 hours on the CDN and 7 days in browsers, so a schema change can reach editors late. That is acceptable for schemas.
-- jsDelivr reads git tags, not GitHub Releases, and needs the repository to be public. Prerelease tags (`v2.0.0-beta.1`) are skipped when resolving `@1`.
+- `@2` resolves to the newest `2.x.x` tag, so the URL stays valid across minor and patch releases and changes only on a major bump (a data format or expression language change). Use an exact tag (`@1.2.3`) for a frozen schema; jsDelivr serves tags immutably.
+- `@2` is cached for up to 12 hours on the CDN and 7 days in browsers, so a schema change can reach editors late. That is acceptable for schemas.
+- jsDelivr reads git tags, not GitHub Releases, and needs the repository to be public. Prerelease tags (`v2.0.0-beta.1`) are skipped when resolving `@2`.
 - Inside this repo, `examples/full` points at the local `schema/` files instead.
 
 ## Using it as a library
@@ -161,6 +161,8 @@ Data that uses game `subTypes` needs validator **1.12.0** or later, and an app t
 
 Data that uses `effects` or `units` on a list choice's values needs validator **1.13.0** or later, and an app that supports them.
 
+Data that uses game `traits` needs validator **2.0.0** or later, and an app that supports them. From 2.0.0 counts must be whole numbers and a fixed `min` may not be above a fixed `max`.
+
 Data that declares `minValidatorVersion` needs validator **1.14.0** or later. From 1.14.0 every id, record key and `@selector` reference must be lowercase kebab-case.
 
 ## Releasing
@@ -168,5 +170,5 @@ Data that declares `minValidatorVersion` needs validator **1.14.0** or later. Fr
 1. Make sure `npm test`, `npm run type-check`, `npm run lint`, `npm run generate-schema -- --check` and `npm run validate-data` pass (CI runs them).
 2. Set the new version in `package.json` (`npm version <x.y.z> --no-git-tag-version`) and in `VALIDATOR_VERSION` (`src/game_data/versions.ts`); a test fails when the two differ. A change to `SCHEMA_VERSION` or `EXPRESSION_VERSION`, or any other incompatible change, is a **major** bump. Whenever the major changes, run `npm run generate-schema`: it sets each schema's `$id` to the new `@<major>` URL.
 3. Add a CHANGELOG entry, commit, and merge to `main`.
-4. Tagging is automatic: once CI passes on `main`, the [Release tags](.github/workflows/release-tags.yml) workflow tags the merged commit `vX.Y.Z` from `package.json` and moves the major tag the Action uses (for example `v1`). If `vX.Y.Z` already exists it does nothing, so merges that don't bump the version add no tags. Don't push version tags by hand. A GitHub Release is not needed; jsDelivr and npm's git installs read tags. Consumers who pin `#vX.Y.Z` are unaffected by the major tag moving.
+4. Tagging is automatic: once CI passes on `main`, the [Release tags](.github/workflows/release-tags.yml) workflow tags the merged commit `vX.Y.Z` from `package.json` and moves the major tag the Action uses (for example `v2`). If `vX.Y.Z` already exists it does nothing, so merges that don't bump the version add no tags. Don't push version tags by hand. A GitHub Release is not needed; jsDelivr and npm's git installs read tags. Consumers who pin `#vX.Y.Z` are unaffected by the major tag moving.
 5. Consumers update the tag in their `package.json` dependency.
