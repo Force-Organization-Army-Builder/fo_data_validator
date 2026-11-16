@@ -1339,3 +1339,110 @@ describe('list choice value effects', () => {
         assert.deepEqual(issues, []);
     });
 });
+
+describe('empty records and mismatched values', () => {
+    const fieldArmy = (set: GameDataSet) =>
+        set.factions.find((f) => f.data.id === 'field-army')!;
+    const about = (issues: Array<string>, text: string) =>
+        issues.filter((i) => i.includes(text));
+
+    it('warns about a unit with no profiles', async () => {
+        const issues = await issuesAfter((set) => {
+            fieldArmy(set).data.units['medic'].profiles = [];
+        });
+        assert.deepEqual(about(issues, 'no profiles'), [
+            'warning factions/field-army.json units/medic: has no profiles',
+        ]);
+    });
+
+    it('warns about an upgrade with no options', async () => {
+        const issues = await issuesAfter((set) => {
+            const upgrade =
+                fieldArmy(set).data.units['squad'].upgrades!['squad-options'];
+            upgrade.options = {};
+            delete upgrade.default;
+        });
+        assert.deepEqual(about(issues, 'no options'), [
+            'warning factions/field-army.json units/squad/upgrades/squad-options: has no options',
+        ]);
+    });
+
+    it('warns about a stat effect with no changes', async () => {
+        const issues = await issuesAfter((set) => {
+            set.game.data.choices!['stance'].values['offensive'].effects = [
+                { kind: 'stat', changes: [] },
+            ];
+        });
+        assert.deepEqual(issues, [
+            'warning game.json choices/stance/values/offensive/effects/0: a stat effect with no changes',
+        ]);
+    });
+
+    it("warns about an 'add' on a stat no template marks numeric", async () => {
+        const issues = await issuesAfter((set) => {
+            set.game.data.choices!['stance'].values['offensive'].effects = [
+                {
+                    kind: 'stat',
+                    changes: [
+                        { stat: 'save', op: 'add', value: -1 },
+                        { stat: 'save', op: 'set', value: '3+' },
+                        { stat: 'move', op: 'add', value: 1 },
+                    ],
+                },
+            ];
+        });
+        assert.deepEqual(issues, [
+            "warning game.json choices/stance/values/offensive/effects/0: 'save' isn't a numeric stat, so 'add' can't shift it",
+        ]);
+    });
+
+    it('warns about a value given to a rule that takes none', async () => {
+        const issues = await issuesAfter((set) => {
+            const [profile] = fieldArmy(set).data.units['squad'].profiles;
+            profile.specialRules = [
+                { id: 'fearless', value: '2' },
+                { id: 'armoured', value: '2' },
+                { id: 'fearless' },
+            ];
+        });
+        assert.deepEqual(about(issues, 'value'), [
+            "warning factions/field-army.json units/squad/profiles/trooper: 'fearless' is given a value but takes none",
+        ]);
+    });
+
+    it('warns about two factions with one id', async () => {
+        const issues = await issuesAfter((set) => {
+            const copy = structuredClone(fieldArmy(set));
+            copy.file = 'factions/field-army-copy.json';
+            set.factions.push(copy);
+        });
+        assert.deepEqual(about(issues, 'is also in'), [
+            "warning factions/field-army-copy.json id: the faction id 'field-army' is also in factions/field-army.json",
+        ]);
+    });
+
+    it('warns about two sub-factions of one faction with one id', async () => {
+        const issues = await issuesAfter((set) => {
+            const copy = structuredClone(
+                set.subFactions.find((s) => s.data.id === 'veterans')!
+            );
+            copy.file = 'sub-factions/veterans-copy.json';
+            set.subFactions.push(copy);
+        });
+        assert.deepEqual(about(issues, 'is also in'), [
+            "warning sub-factions/veterans-copy.json id: the sub-faction id 'veterans' of 'field-army' is also in sub-factions/veterans.json",
+        ]);
+    });
+
+    it('lets sub-factions of different factions share an id', async () => {
+        const issues = await issuesAfter((set) => {
+            const copy = structuredClone(
+                set.subFactions.find((s) => s.data.id === 'veterans')!
+            );
+            copy.file = 'sub-factions/guild-veterans.json';
+            copy.data.parent.faction = 'clockwork-guild';
+            set.subFactions.push(copy);
+        });
+        assert.deepEqual(about(issues, 'is also in'), []);
+    });
+});

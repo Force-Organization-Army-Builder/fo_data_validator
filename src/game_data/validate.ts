@@ -170,6 +170,8 @@ type Scope = {
     records: Partial<FactionRecords>;
     vocabulary: ExpressionVocabulary;
     unitStats: Set<string>;
+    /* unit stats some template marks `numeric`, which an `add` can shift */
+    numericStats: Set<string>;
 };
 
 class Validator {
@@ -320,6 +322,7 @@ class Validator {
 
     run() {
         const { game, factions, subFactions } = this.set;
+        this.sharedIds();
         this.file = game.file;
         this.gameSystem(game.data);
         this.profileFilters('', game.data);
@@ -336,6 +339,47 @@ class Validator {
         }
         for (const faction of factions) this.combinedSubFactions(faction.data);
         return this.issues;
+    }
+
+    /*
+     * Two factions with one id, or two sub-factions of one faction with one
+     * id: a `parent`, a slot `source` or an expression naming the id can't
+     * tell them apart. A warning, because two sources may each provide a
+     * faction with the same id (spec §2); within one source it is a mistake.
+     */
+    private sharedIds() {
+        const { factions, subFactions } = this.set;
+        const check = (
+            files: Array<{ file: string; key: string; what: string }>
+        ) => {
+            const first = new Map<string, string>();
+            for (const { file, key, what } of files) {
+                const earlier = first.get(key);
+                if (earlier === undefined) first.set(key, file);
+                else {
+                    this.file = file;
+                    this.report(
+                        'id',
+                        `${what} is also in ${earlier}`,
+                        'warning'
+                    );
+                }
+            }
+        };
+        check(
+            factions.map((f) => ({
+                file: f.file,
+                key: f.data.id,
+                what: `the faction id '${f.data.id}'`,
+            }))
+        );
+        check(
+            subFactions.map((s) => ({
+                file: s.file,
+                key: `${s.data.parent.faction}/${s.data.id}`,
+                what: `the sub-faction id '${s.data.id}' of '${s.data.parent.faction}'`,
+            }))
+        );
     }
 
     private scopeFor(records: Array<Partial<FactionRecords>>): Scope {
@@ -359,6 +403,11 @@ class Validator {
             unitStats: new Set(
                 Object.values(game.stats.unit).flatMap((t) =>
                     t.stats.map((s) => s.id)
+                )
+            ),
+            numericStats: new Set(
+                Object.values(game.stats.unit).flatMap((t) =>
+                    t.stats.filter((s) => s.numeric).map((s) => s.id)
                 )
             ),
         };
@@ -839,12 +888,16 @@ class Validator {
     }
 
     private rule(path: string, selection: SpecialRuleSelection, scope: Scope) {
-        if (
-            !(selection.id in (scope.records.specialRules ?? {})) &&
-            !(selection.id in (scope.game.specialRules ?? {}))
-        ) {
-            this.report(path, `unknown special rule '${selection.id}'`);
-        }
+        const rule =
+            scope.records.specialRules?.[selection.id] ??
+            scope.game.specialRules?.[selection.id];
+        if (!rule) this.report(path, `unknown special rule '${selection.id}'`);
+        else if (selection.value !== undefined && !rule.configurable)
+            this.report(
+                path,
+                `'${selection.id}' is given a value but takes none`,
+                'warning'
+            );
     }
 
     private gear(path: string, ref: GearRef, scope: Scope) {
@@ -873,6 +926,7 @@ class Validator {
             );
 
         const profileIds = unit.profiles.map((p) => p.id);
+        if (!profileIds.length) this.report(path, 'has no profiles', 'warning');
         if (new Set(profileIds).size !== profileIds.length)
             this.report(path, 'profile ids repeat');
         if (unit.composition) this.composition(unit, profileIds, scope);
@@ -1477,6 +1531,8 @@ class Validator {
         scopes: ReadonlyArray<BuiltInScope>
     ) {
         this.ids(`${path}/options`, upgrade.options);
+        if (!keys(upgrade.options).length)
+            this.report(path, 'has no options', 'warning');
 
         // an upgrade's own options hide same-id options from the shared upgrades it
         // references (intended); between shared upgrades the first referenced wins,
@@ -1595,9 +1651,20 @@ class Validator {
         scopes: ReadonlyArray<BuiltInScope>
     ) {
         if (effect.kind === 'stat') {
+            if (!effect.changes.length)
+                this.report(path, 'a stat effect with no changes', 'warning');
             for (const change of effect.changes) {
                 if (!scope.unitStats.has(change.stat))
                     this.report(path, `unknown stat '${change.stat}'`);
+                else if (
+                    change.op === 'add' &&
+                    !scope.numericStats.has(change.stat)
+                )
+                    this.report(
+                        path,
+                        `'${change.stat}' isn't a numeric stat, so 'add' can't shift it`,
+                        'warning'
+                    );
             }
         } else if (effect.kind === 'specialRule') {
             this.rule(path, effect.rule, scope);

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **New warnings.** None of them is an error, so data that passed still passes:
+    - a stat effect's `add` on a stat that no unit stat template marks `numeric`;
+    - a `value` given to a special rule that isn't `configurable`;
+    - a unit with no profiles, an upgrade with no options, and a stat effect with no changes;
+    - two factions with the same id, or two sub-factions of one faction with the same id. Two sources may each provide a faction with the same id, so this stays a warning; within one source it is a mistake.
 - No change to what data passes, and the JSON Schema files are unchanged. Lists that were declared twice now have one definition each, in `src/game_data/schema.ts`: the built-in scopes (`BUILT_IN_SCOPES`, with the new `TERM_SCOPES` for the nine a game can rename in `terms`), `COST_TARGETS` and the faction record kinds. The stat, special-rule and trait effects that five places listed separately come from one list.
 - **For the app:** `TERM_SCOPES`, `UnitEffectSchema` and the `UnitEffect` and `TermScope` types are new exports. `BUILT_IN_SCOPES`, `BuiltInScope` and `COST_TARGETS` keep their names and values; `COST_TARGETS` is now a readonly tuple.
 

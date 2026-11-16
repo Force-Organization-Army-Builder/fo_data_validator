@@ -123,7 +123,7 @@ The game declares unit and weapon templates; each profile names its template and
 }
 ```
 
-`numeric` stats can be shifted by stat effects ('3+' -1 → '2+').
+`numeric` stats can be shifted by stat effects ('3+' -1 → '2+'). An `add` on a stat no template marks `numeric` is a warning.
 
 ### 3.7 List choices and list rules
 
