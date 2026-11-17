@@ -19,7 +19,7 @@ import type { DataIssue } from './validate';
  * This validator's release, as in package.json (a test keeps the two equal).
  * A literal, not a read of package.json, so this module stays browser-safe.
  */
-export const VALIDATOR_VERSION = '2.1.0';
+export const VALIDATOR_VERSION = '2.2.0';
 
 export const SCHEMA_VERSION = 1;
 export const OLDEST_SCHEMA_VERSION = 1;

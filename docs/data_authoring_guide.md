@@ -343,7 +343,21 @@ A **trait effect** changes the unit's traits. Traits belong to the whole unit, s
 
 `replace` removes any of `from` and adds `to` only if the unit had one of them ("models replace their X trait with Y").
 
-Effects appear on `Option.effects`, slot options, sub-faction unit modifiers, groups (`effects`) and list choice values (`effects`). `when` on an effect holds it back until true. The app applies them in this order: the unit's own traits, sub-faction unit modifiers, list choice values, options, the group, the slot's own `effects`, slot options. Each step's `when` sees the result of the earlier steps.
+A **slot-tag effect** (validator ≥2.2.0) makes the slot that holds the unit count as having game slot tags: it offers those tags' slot options, and `slot.is(tag:…)` reads true. It tags the slot, not the unit, so like a trait effect it has no profile filter and its `when` can't use `profile`. `categories` limits which of the tag's slot options it offers (see [Slot options](#slot-options-benefits-for-tagged-slots)):
+
+```json
+{ "kind": "slotTag", "add": ["prime"] }
+{ "kind": "slotTag", "add": ["prime"], "categories": ["honour"],
+  "when": { "if": "group.is(type:elite)", "message": "Only in an Elite formation" } }
+```
+
+For rules such as "while this sub-faction is taken, units in an Elite formation may each take one Honour option, as if they filled a Prime slot": the sub-faction's unit modifier carries the second effect above. `examples/full`'s `veterans` gives heavy units in an Elite formation a Prime tag limited to `honour` options (`honoured-heavies`).
+
+- Every tag in `add` must be declared in the game's `slotTags` (an error otherwise); `add` needs at least one, and a tag listed twice is a warning.
+- Allowed in sub-faction unit modifier `actions`, upgrade option `effects`, group `effects`, slot `effects` (a slot a special rule or slot option adds included) and list choice value `effects`. **Not** in a slot option's `effects`: slot options are applied last, so a tag one added could never offer anything (a shape error says so).
+- Its `when` should not read `slot.is(tag:…)` of a tag it adds itself.
+
+Effects appear on `Option.effects`, slot options, sub-faction unit modifiers, groups (`effects`) and list choice values (`effects`). `when` on an effect holds it back until true. The app applies them in this order: the unit's own traits, sub-faction unit modifiers, list choice values, options, the group, the slot's own `effects`, slot options. Each step's `when` sees the result of the earlier steps. Slot tags that slot-tag effects add are in place before slot options are offered, so a slot option's `units`, the options a slot offers and `slot.is(tag:…)` all see them.
 
 **List choice values** (validator ≥1.13.0) give effects to every unit in the list while the value is picked, for rules such as "in a Defensive list, every unit has the Dug In trait":
 
@@ -387,8 +401,9 @@ Effects appear on `Option.effects`, slot options, sub-faction unit modifiers, gr
 ```
 
 - `type` is a group type of the game. A slot is filled by a unit whose role is in `roles`; `tags` mark it for slot options; `repeat` lets the slot be added more than once; `units` (on the group or a slot) restricts which units may fill it, using a selector.
+- `tagOptions` (validator ≥2.2.0) limits which slot options one of the slot's tags offers, by the options' `category`: `"tagOptions": { "prime": { "categories": ["honour"] } }`. Each key must be one of the slot's `tags` (an error otherwise). See [Slot options](#slot-options-benefits-for-tagged-slots).
 - `requires` lists units the contingent (or its root group) must already hold; `when`, `min`, `max` and `cost` as above. Unavailable groups are disabled in the builder's menus and never removed automatically.
-- `effects` (stat, special-rule and trait effects) apply to every unit in the group, including slots added later, for rules such as "Every unit in this group gains the Gun Line trait": `"effects": [{ "kind": "trait", "add": ["Gun Line"] }]`. The group's and slots' `units` selectors see a unit's traits **before** the group's own effects, so a group can't let units in by the trait it gives them. Needs validator 1.2.0+.
+- `effects` (stat, special-rule, trait and slot-tag effects) apply to every unit in the group, including slots added later, for rules such as "Every unit in this group gains the Gun Line trait": `"effects": [{ "kind": "trait", "add": ["Gun Line"] }]`. The group's and slots' `units` selectors see a unit's traits **before** the group's own effects, so a group can't let units in by the trait it gives them. Needs validator 1.2.0+.
 
 ### Slots filled from another faction
 
@@ -423,7 +438,16 @@ A **UnitSelector** picks units: `{ "unitIds": [...], "roles": [...], "traits": [
 
 ### Slot options (benefits for tagged slots)
 
-`slotOptions`: `{ "id", "name", "text", "slotTag", "slotRoles"?, "units"?, "cost"?, "effects"? }`. A slot with the tag offers one option; `units` (a selector, validator 1.4.0+) limits it to slots whose unit matches, seen before slot-option effects, e.g. `{ "traits": ["Field Army"] }`; effects are stat/special-rule effects, plus at most one `{ "kind": "slot", "roleChoices": [...] }` (an extra slot, which may take `units`, a `source` and `effects`) and one `{ "kind": "allowedRoles", "roles": [...] }`.
+`slotOptions`: `{ "id", "name", "text", "slotTag", "category"?, "slotRoles"?, "units"?, "cost"?, "effects"? }`. A slot with the tag offers one option; `units` (a selector, validator 1.4.0+) limits it to slots whose unit matches, seen before slot-option effects, e.g. `{ "traits": ["Field Army"] }`; effects are stat/special-rule/trait effects, plus at most one `{ "kind": "slot", "roleChoices": [...] }` (an extra slot, which may take `units`, a `source` and `effects`) and one `{ "kind": "allowedRoles", "roles": [...] }`. A slot option can't have a slot-tag effect.
+
+**Categories** (validator ≥2.2.0). `category` (an id) says what kind of option it is among its tag's, e.g. `"honour"` for the Honour options among a tag's options. A slot can then offer only some categories for a tag:
+
+- a slot's own `tagOptions`: `{ "prime": { "categories": ["honour"] } }`, for rules such as "units in this group's Prime slots may only take Honour options, and no other Prime options";
+- a slot-tag effect's `categories`, for the tags it adds.
+
+**Combining.** When several restrictions apply to one tag on one slot (the slot's `tagOptions` and one or more slot-tag effects adding that tag), only options **every** restricting source allows are offered: the categories are intersected. A source without categories (a plain `tags` entry, a slot-tag effect without `categories`) restricts nothing, so it never widens a restricted one. With no restriction, every option of the tag is offered, as before. An option without a `category` is offered only where its tag is unrestricted.
+
+A category in `tagOptions` or a slot-tag effect that no slot option of the tag has, in the game or any loaded faction or sub-faction, is a warning ("offers nothing"); an empty `categories` list is an error. `examples/full`'s `heavy-detachment` limits its Prime slot to the `honour` category (`honoured-crew`).
 
 ## 6. The sub-faction file (`SubFaction`)
 
@@ -454,7 +478,7 @@ A modifier of a faction (an order, a regiment, a sponsor):
 ```
 
 - It may hold the same record kinds as a faction (`units`, `weapons`, `upgrades`, `specialRules`, `groups`, …); they merge over the parent's. A record that shares a kind and id with the parent's **replaces** it only if listed in `overrides`; any other collision is an error.
-- `unitModifiers` pick units with a selector and add a copy of a faction upgrade (`addUpgrade`, stable id from the modifier), apply stat/special-rule effects, or make the units `unavailable`.
+- `unitModifiers` pick units with a selector and add a copy of a faction upgrade (`addUpgrade`, stable id from the modifier), apply stat/special-rule/trait effects, tag the slot holding them (`slotTag`, validator ≥2.2.0), or make the units `unavailable`.
 
 ### Several picks per faction (sub-faction groups)
 
@@ -510,7 +534,7 @@ unit.has(weapon:cannon) ? 25 : 15              a number: cost of an option
 | unit `when`/`limit.max`/cost, composition block `max`/cost | `unit`, `slot`, `group`, `contingent`, `root`, `main`, `list` |
 | upgrade `when`/`min`/`max` | the unit's, plus `profile` when the upgrade has a `profileId` |
 | option `when`/`max`/cost, sub-choice values | `option`, plus an upgrade's |
-| stat / special-rule effect `when` | `profile`, `unit`, `slot`, `group`, `contingent`, `root`, `main`, `list` (trait effects: the same without `profile`) |
+| stat / special-rule effect `when` | `profile`, `unit`, `slot`, `group`, `contingent`, `root`, `main`, `list` (trait and slot-tag effects: the same without `profile`) |
 | special rule `grants` | `rule`, `unit`, `slot`, `group`, `contingent`, `root`, `main`, `list` |
 | sub-faction `when`, sub-faction group `min`/`max` | `contingent`, `root`, `main`, `list` |
 | group type `min`/`max`, list rules | `main`, `list` (count rules limited to a contingent or group also see those and `root`) |

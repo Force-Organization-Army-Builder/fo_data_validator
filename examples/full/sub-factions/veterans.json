@@ -166,6 +166,23 @@
         }
     },
     "unitModifiers": {
+        "honoured-heavies": {
+            "id": "honoured-heavies",
+            "name": "Honoured heavies",
+            "description": "Heavy units in a Heavy Formation may each take one Honour option, as if they filled a Prime slot.",
+            "selector": { "roles": ["heavy"] },
+            "actions": [
+                {
+                    "kind": "slotTag",
+                    "add": ["prime"],
+                    "categories": ["honour"],
+                    "when": {
+                        "if": "group.is(type:elite)",
+                        "message": "Only in an Elite formation"
+                    }
+                }
+            ]
+        },
         "sergeants-fine": {
             "id": "sergeants-fine",
             "name": "Sergeants may take a fine weapon",

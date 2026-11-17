@@ -33,6 +33,8 @@ import type {
     SlotOption,
     SlotSource,
     SlotUnitEffect,
+    SlotTagEffect,
+    Slot,
     Resource,
     SpecialRule,
     SubChoice,
@@ -1763,7 +1765,7 @@ class Validator {
 
     private effect(
         path: string,
-        effect: StatEffect | SpecialRuleEffect | TraitEffect,
+        effect: StatEffect | SpecialRuleEffect | TraitEffect | SlotTagEffect,
         scope: Scope,
         scopes: ReadonlyArray<BuiltInScope>
     ) {
@@ -1785,12 +1787,129 @@ class Validator {
             }
         } else if (effect.kind === 'specialRule') {
             this.rule(path, effect.rule, scope);
+        } else if (effect.kind === 'slotTag') {
+            this.slotTagEffect(path, effect, scope);
+            // it tags the slot, not a profile
+            scopes = scopes.filter((s) => s !== 'profile');
         } else {
             this.traitEffect(path, effect);
             // traits belong to the whole unit: no profile to look at
             scopes = scopes.filter((s) => s !== 'profile');
         }
         this.condition(path, effect.when, scopes, scope.vocabulary);
+    }
+
+    /* A slotTag effect (validator 2.2.0): game-declared tags, and categories some option of them has */
+    private slotTagEffect(path: string, effect: SlotTagEffect, scope: Scope) {
+        const declared = keys(scope.game.slotTags);
+        if (!effect.add.length)
+            this.report(path, 'a slotTag effect needs at least one tag in add');
+        this.duplicates(`${path}/add`, effect.add, 'slot tag');
+        for (const tag of effect.add)
+            if (!declared.includes(tag))
+                this.report(
+                    `${path}/add`,
+                    `unknown slot tag '${tag}'${didYouMean(tag, declared)}; slot tags are declared in the game's slotTags`
+                );
+        this.categories(
+            `${path}/categories`,
+            effect.categories,
+            effect.add.filter((t) => declared.includes(t))
+        );
+    }
+
+    /* Entries listed more than once: harmless, but likely a slip */
+    private duplicates(
+        path: string,
+        values: ReadonlyArray<string>,
+        what: string
+    ) {
+        const seen = new Set<string>();
+        for (const value of values) {
+            if (seen.has(value))
+                this.report(
+                    path,
+                    `${what} '${value}' is listed more than once`,
+                    'warning'
+                );
+            seen.add(value);
+        }
+    }
+
+    /* The slot options with each tag, by category, across every loaded file */
+    private optionCategories?: Map<string, Set<string>>;
+
+    private categoriesOf(tag: string): Set<string> {
+        if (!this.optionCategories) {
+            const map = new Map<string, Set<string>>();
+            const { game, factions, subFactions } = this.set;
+            for (const options of [
+                game.data.slotOptions,
+                ...factions.map((f) => f.data.slotOptions),
+                ...subFactions.map((f) => f.data.slotOptions),
+            ])
+                for (const option of Object.values(options ?? {})) {
+                    if (!option.category) continue;
+                    const set = map.get(option.slotTag) ?? new Set<string>();
+                    set.add(option.category);
+                    map.set(option.slotTag, set);
+                }
+            this.optionCategories = map;
+        }
+        return this.optionCategories.get(tag) ?? new Set();
+    }
+
+    /*
+     * The categories a restriction (a slot's `tagOptions` entry, a slotTag
+     * effect) offers for `tags`: a category no slot option of those tags has,
+     * in the game or any loaded faction or sub-faction, offers nothing
+     */
+    private categories(
+        path: string,
+        categories: ReadonlyArray<string> | undefined,
+        tags: ReadonlyArray<string>
+    ) {
+        if (!categories) return;
+        if (!categories.length) {
+            this.report(
+                path,
+                'an empty categories list offers no slot options; leave it out to offer every option of the tag'
+            );
+            return;
+        }
+        this.duplicates(path, categories, 'category');
+        if (!tags.length) return;
+        const known = new Set(tags.flatMap((t) => [...this.categoriesOf(t)]));
+        for (const category of new Set(categories))
+            if (!known.has(category))
+                this.report(
+                    path,
+                    `no slot option of ${tags.map((t) => `'${t}'`).join(' or ')} has the category '${category}', so it offers nothing${didYouMean(category, [...known])}`,
+                    'warning'
+                );
+    }
+
+    /* A slot's `tagOptions` (validator 2.2.0): keys are tags the slot has */
+    private tagOptions(path: string, slot: Slot, scope: Scope) {
+        const declared = keys(scope.game.slotTags);
+        for (const [tag, options] of Object.entries(slot.tagOptions ?? {})) {
+            const at = `${path}/tagOptions/${tag}`;
+            if (!declared.includes(tag)) {
+                this.report(
+                    at,
+                    `unknown slot tag '${tag}'${didYouMean(tag, declared)}`
+                );
+                continue;
+            }
+            if (!slot.tags?.includes(tag)) {
+                this.report(
+                    at,
+                    `the slot doesn't have the tag '${tag}' (add it to tags); a slotTag effect limits the options of a tag it adds with its own categories`
+                );
+                continue;
+            }
+            this.categories(`${at}/categories`, options.categories, [tag]);
+        }
     }
 
     private traitEffect(path: string, effect: TraitEffect) {
@@ -1958,6 +2077,7 @@ class Validator {
                 slot.tags?.forEach((t) =>
                     this.known(s, 'slot tag', t, keys(game.slotTags))
                 );
+                this.tagOptions(s, slot, scope);
                 this.slotUnits(s, slot, scope);
                 this.condition(
                     s,

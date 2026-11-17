@@ -97,7 +97,7 @@ describe('checkShapes', () => {
             };
         });
         assert.deepEqual(issues, [
-            "units/squad/upgrades/squad-options/options/grenades/effects/0/kind: Invalid discriminator value. Expected 'stat' | 'specialRule' | 'trait'",
+            "units/squad/upgrades/squad-options/options/grenades/effects/0/kind: Invalid discriminator value. Expected 'stat' | 'specialRule' | 'trait' | 'slotTag'",
         ]);
     });
 
@@ -332,5 +332,71 @@ describe('counts', () => {
     it('still takes a fraction where one is meant', async () => {
         // the example's gear limit: one pick for every five of the gear
         assert.deepEqual(await issuesAfter('squad', () => {}), []);
+    });
+});
+
+describe('slot tag effects and slot option categories', () => {
+    type Loose = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+
+    async function gameIssues(change: (game: Loose) => void) {
+        const all = await files();
+        change(all.find((f) => f.kind === 'GameSystem')!.data as Loose);
+        return checkShapes(all).map((i) => `${i.path}: ${i.message}`);
+    }
+
+    it("rejects a slotTag effect in a slot option's effects, saying why", async () => {
+        const issues = await gameIssues((game) => {
+            game.slotOptions['extra-support'].effects.push({
+                kind: 'slotTag',
+                add: ['prime'],
+            });
+        });
+        assert.deepEqual(issues, [
+            "slotOptions/extra-support/effects/1/kind: a slot option can't have a slotTag effect: slot options are applied last, so a tag one added could never offer anything; give the slot the tag (`tags`), or put the slotTag effect on the group, the slot, an upgrade option, a sub-faction unit modifier or a list choice value",
+        ]);
+    });
+
+    it('takes no profile filter on a slotTag effect', async () => {
+        const issues = await gameIssues((game) => {
+            game.groups['heavy-detachment'].effects = [
+                {
+                    kind: 'slotTag',
+                    add: ['prime'],
+                    profiles: { anyOf: ['infantry'] },
+                },
+            ];
+        });
+        assert.deepEqual(issues, [
+            "groups/heavy-detachment/effects/0/profiles: unknown property 'profiles' (misspelt, or a field from a newer validator release)",
+        ]);
+    });
+
+    it('takes slug categories and tag ids only', async () => {
+        const issues = await gameIssues((game) => {
+            game.slotOptions['honoured-crew'].category = 'Honour';
+            game.groups['heavy-detachment'].slots[0].tagOptions.prime = {
+                categories: ['honour rank'],
+            };
+            game.groups['heavy-detachment'].effects = [
+                { kind: 'slotTag', add: ['Prime'], categories: ['honour'] },
+            ];
+        });
+        assert.equal(issues.length, 3, issues.join('\n'));
+        for (const at of [
+            'slotOptions/honoured-crew/category: ',
+            'groups/heavy-detachment/slots/0/tagOptions/prime/categories/0: ',
+            'groups/heavy-detachment/effects/0/add/0: ',
+        ])
+            assert.ok(
+                issues.some(
+                    (i) => i.startsWith(at) && i.includes('kebab-case')
+                ),
+                at
+            );
+    });
+
+    it('takes a slotTag effect in a sub-faction unit modifier', async () => {
+        // the example's veterans carry one
+        assert.deepEqual(await gameIssues(() => {}), []);
     });
 });

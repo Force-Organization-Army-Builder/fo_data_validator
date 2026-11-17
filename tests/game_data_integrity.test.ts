@@ -1701,3 +1701,152 @@ describe('versions and version ranges', () => {
         ]);
     });
 });
+
+describe('slot tag effects and slot option categories', () => {
+    const fieldArmy = (set: GameDataSet) =>
+        set.factions.find((f) => f.data.id === 'field-army')!.data;
+    const tagEffect = {
+        kind: 'slotTag' as const,
+        add: ['prime'],
+        categories: ['honour'],
+    };
+
+    it('has both in the full example', async () => {
+        const [set] = await sets(path.join(examples, 'full'));
+        const veterans = sub(set, 'veterans');
+        assert.ok(
+            Object.values(veterans.unitModifiers ?? {}).some((m) =>
+                m.actions.some((a) => a.kind === 'slotTag')
+            )
+        );
+        assert.ok(
+            Object.values(set.game.data.groups ?? {}).some((g) =>
+                g.slots.some((s) => s.tagOptions)
+            )
+        );
+        assert.ok(
+            Object.values(set.game.data.slotOptions ?? {}).some(
+                (o) => o.category
+            )
+        );
+    });
+
+    it('takes a slotTag effect on an upgrade option, a group, a slot and a list choice value', async () => {
+        const issues = await issuesAfter((set) => {
+            const faction = fieldArmy(set);
+            const option = faction.units['squad'].upgrades!['squad-options']
+                .options['banner'] as { effects?: Array<unknown> };
+            option.effects = [...(option.effects ?? []), tagEffect];
+            const group = faction.groups['gun-line'];
+            group.effects = [...(group.effects ?? []), tagEffect];
+            const slot = group.slots[0];
+            slot.effects = [
+                ...(slot.effects ?? []),
+                {
+                    ...tagEffect,
+                    when: {
+                        if: 'group.is(type:core) and unit.is(role:troop)',
+                        message: 'Troops in a core formation',
+                    },
+                },
+            ];
+            const value = set.game.data.choices!['stance'].values['offensive'];
+            value.effects = [...(value.effects ?? []), tagEffect];
+        });
+        assert.deepEqual(issues, []);
+    });
+
+    it('reports a tag the game does not declare and an empty add', async () => {
+        const issues = await issuesAfter((set) => {
+            const group = fieldArmy(set).groups['gun-line'];
+            group.effects = [
+                { kind: 'slotTag', add: ['prim'] },
+                { kind: 'slotTag', add: [] },
+            ];
+        });
+        assert.deepEqual(issues, [
+            "error factions/field-army.json groups/gun-line/effects/0/add: unknown slot tag 'prim' (did you mean 'prime'?); slot tags are declared in the game's slotTags",
+            'error factions/field-army.json groups/gun-line/effects/1: a slotTag effect needs at least one tag in add',
+        ]);
+    });
+
+    it('warns about a tag or category listed twice', async () => {
+        const issues = await issuesAfter((set) => {
+            fieldArmy(set).groups['gun-line'].effects = [
+                {
+                    kind: 'slotTag',
+                    add: ['prime', 'prime'],
+                    categories: ['honour', 'honour'],
+                },
+            ];
+        });
+        assert.deepEqual(issues, [
+            "warning factions/field-army.json groups/gun-line/effects/0/add: slot tag 'prime' is listed more than once",
+            "warning factions/field-army.json groups/gun-line/effects/0/categories: category 'honour' is listed more than once",
+        ]);
+    });
+
+    it('warns about a category no slot option of the tag has, and rejects an empty one', async () => {
+        const issues = await issuesAfter((set) => {
+            fieldArmy(set).groups['gun-line'].effects = [
+                { kind: 'slotTag', add: ['prime'], categories: ['honor'] },
+                { kind: 'slotTag', add: ['prime'], categories: [] },
+            ];
+        });
+        assert.deepEqual(issues, [
+            "warning factions/field-army.json groups/gun-line/effects/0/categories: no slot option of 'prime' has the category 'honor', so it offers nothing (did you mean 'honour'?)",
+            'error factions/field-army.json groups/gun-line/effects/1/categories: an empty categories list offers no slot options; leave it out to offer every option of the tag',
+        ]);
+    });
+
+    it("counts categories from any loaded file, a sub-faction's included", async () => {
+        const issues = await issuesAfter((set) => {
+            fieldArmy(set).groups['gun-line'].effects = [
+                { kind: 'slotTag', add: ['prime'], categories: ['drill'] },
+            ];
+            sub(set, 'siege-doctrine').slotOptions = {
+                'siege-drill': {
+                    id: 'siege-drill',
+                    name: 'Siege Drill',
+                    text: 'Practised at the walls.',
+                    slotTag: 'prime',
+                    category: 'drill',
+                },
+            };
+        });
+        assert.deepEqual(issues, []);
+    });
+
+    it("doesn't let a slotTag effect's when read the profile", async () => {
+        const issues = await issuesAfter((set) => {
+            fieldArmy(set).groups['gun-line'].effects = [
+                {
+                    kind: 'slotTag',
+                    add: ['prime'],
+                    when: { if: 'profile.is(tag:sergeant)', message: 'x' },
+                },
+            ];
+        });
+        assert.deepEqual(issues, [
+            "error factions/field-army.json groups/gun-line/effects/0/when: 'profile' isn't available here (allowed: contingent, group, list, main, root, slot, unit)",
+        ]);
+    });
+
+    it('checks tagOptions against the slot and its tags', async () => {
+        const issues = await issuesAfter((set) => {
+            const slot = set.game.data.groups!['heavy-detachment'].slots[0];
+            slot.tagOptions = {
+                prime: { categories: ['honour', 'rank'] },
+                elite: { categories: ['honour'] },
+            };
+            set.game.data.groups!['allied-formation'].slots[0].tagOptions = {
+                prime: { categories: ['honour'] },
+            };
+        });
+        assert.deepEqual(issues, [
+            "error game.json groups/allied-formation/slots/0/tagOptions/prime: the slot doesn't have the tag 'prime' (add it to tags); a slotTag effect limits the options of a tag it adds with its own categories",
+            "warning game.json groups/heavy-detachment/slots/0/tagOptions/prime/categories: no slot option of 'prime' has the category 'rank', so it offers nothing",
+            "error game.json groups/heavy-detachment/slots/0/tagOptions/elite: unknown slot tag 'elite'",
+        ]);
+    });
+});

@@ -92,6 +92,8 @@ export type StatChange = Infer<typeof S.StatChangeSchema>;
 export type StatEffect = Infer<typeof S.StatEffectSchema>;
 export type SpecialRuleEffect = Infer<typeof S.SpecialRuleEffectSchema>;
 export type TraitEffect = Infer<typeof S.TraitEffectSchema>;
+/** Tags the slot holding the unit (validator 2.2.0) */
+export type SlotTagEffect = Infer<typeof S.SlotTagEffectSchema>;
 
 export type Group = Infer<typeof S.GroupSchema>;
 export type GroupEffect = Infer<typeof S.GroupEffectSchema>;
@@ -99,7 +101,10 @@ export type Slot = Infer<typeof S.SlotSchema>;
 export type SlotSource = Infer<typeof S.SlotSourceSchema>;
 /** A stat, special-rule or trait effect on a unit */
 export type UnitEffect = Infer<typeof S.UnitEffectSchema>;
+/** A unit effect or a slot-tag effect: what everything but a slot option may apply (validator 2.2.0) */
+export type HeldUnitEffect = Infer<typeof S.HeldUnitEffectSchema>;
 export type SlotUnitEffect = Infer<typeof S.SlotUnitEffectSchema>;
+export type TagOptions = Infer<typeof S.TagOptionsSchema>;
 export type AddedSlot = Infer<typeof S.AddedSlotSchema>;
 export type GroupRequirement = Infer<typeof S.GroupRequirementSchema>;
 
