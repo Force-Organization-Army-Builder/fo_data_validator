@@ -88,7 +88,7 @@ Each says how groups of that type form contingents:
 "reserve": { "id": "reserve", "name": "Reserve", "contingent": { "linksTo": ["core", "allied"] } }
 ```
 
-- **Root** groups start a contingent; `source: "main"` uses the list's main faction and sub-faction, `"ally"` a different one the player picks.
+- **Root** groups start a contingent; `source: "main"` uses the list's main faction and sub-faction, `"ally"` a different one the player picks, and `"any"` (validator 2.1.0) any faction of the game the player picks, the main faction included (e.g. a Lord of War detachment that may be of any faction: `"lord-of-war": { "id": "lord-of-war", "name": "Lord of War", "contingent": "root", "source": "any", "max": 1 }`). Left out, `source` is `"main"`. The list's main contingent is always the one from a `main` root: a contingent from an `any` root is not, even when it takes the main faction, and a faction's `defaultGroup` must be of a `main` root type. `source` on a linked group type is a warning, since it is never read.
 - **Linked** groups attach to a root of one of the `linksTo` types and share its faction source.
 - `min` / `max` limit how many a list may hold.
 - A game may have a single root type and no linked types at all.

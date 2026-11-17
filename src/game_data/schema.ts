@@ -381,10 +381,10 @@ export const GroupTypeSchema = z.strictObject({
             '`root` groups start a contingent; linked groups attach to a root group of one of the listed types and share its faction source'
         ),
     source: z
-        .enum(['main', 'ally'])
+        .enum(['main', 'ally', 'any'])
         .optional()
         .describe(
-            "root groups only: `main` uses the list's main faction and sub-faction, `ally` a different one the player picks. Left out = `main`"
+            "root groups only: `main` uses the list's main faction and sub-faction, `ally` a different one the player picks, `any` (validator 2.1.0) any faction of the game the player picks, the main one included. Only a `main` root starts the main contingent. Left out = `main`"
         ),
     min: CountOrExprSchema.optional().describe(
         'how many of this type a list may hold (at least)'

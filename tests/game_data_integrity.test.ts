@@ -4,6 +4,7 @@ import path from 'node:path';
 
 import { formatDiagnostic } from '../src/expressions/diagnostics';
 import { readSource } from '../src/game_data/read_source';
+import { GroupTypeSchema } from '../src/game_data/schema';
 import {
     DataIssue,
     GameDataSet,
@@ -1516,19 +1517,21 @@ describe('fields read under one setting only', () => {
         );
     });
 
-    it('warns about a source on a linked group type', async () => {
-        const issues = await issuesAfter((set) => {
-            const linked = Object.values(set.game.data.groupTypes).find(
-                (t) => typeof t.contingent === 'object'
-            )!;
-            linked.source = 'ally';
+    for (const source of ['ally', 'any'] as const) {
+        it(`warns about source '${source}' on a linked group type`, async () => {
+            const issues = await issuesAfter((set) => {
+                const linked = Object.values(set.game.data.groupTypes).find(
+                    (t) => typeof t.contingent === 'object'
+                )!;
+                linked.source = source;
+            });
+            assert.equal(issues.length, 1);
+            assert.match(
+                issues[0],
+                /^warning game\.json groupTypes\/[a-z-]+\/source: source is only read for a root group type/
+            );
         });
-        assert.equal(issues.length, 1);
-        assert.match(
-            issues[0],
-            /^warning game\.json groupTypes\/[a-z-]+\/source: source is only read for a root group type/
-        );
-    });
+    }
 
     it('warns about everyX on an upgrade that is not one-in-x', async () => {
         const issues = await issuesAfter((set) => {
@@ -1544,6 +1547,46 @@ describe('fields read under one setting only', () => {
             issues[0],
             /perModel\/everyX: everyX is only read for perModel\.type 'one-in-x', not '/
         );
+    });
+});
+
+describe('root group type sources', () => {
+    const rootType = {
+        id: 'lord-of-war',
+        name: 'Lord of War Detachment',
+        contingent: 'root',
+        max: 1,
+    };
+
+    it("accepts 'main', 'ally' and 'any', and nothing else", () => {
+        for (const source of ['main', 'ally', 'any'])
+            assert.ok(
+                GroupTypeSchema.safeParse({ ...rootType, source }).success,
+                source
+            );
+        assert.ok(GroupTypeSchema.safeParse(rootType).success);
+        assert.ok(
+            !GroupTypeSchema.safeParse({ ...rootType, source: 'own' }).success
+        );
+    });
+
+    it("has an 'any' root type in the full example", async () => {
+        const [set] = await sets(path.join(examples, 'full'));
+        const types = Object.values(set.game.data.groupTypes);
+        assert.ok(
+            types.some((t) => t.contingent === 'root' && t.source === 'any')
+        );
+    });
+
+    it("doesn't start a list with a group of an 'any' root type", async () => {
+        const issues = await issuesAfter((set) => {
+            set.factions.find(
+                (f) => f.data.id === 'field-army'
+            )!.data.defaultGroup = 'heavy-detachment';
+        });
+        assert.deepEqual(issues, [
+            "error factions/field-army.json defaultGroup: 'heavy-detachment' isn't a group a list starts with (a root group type from the main faction)",
+        ]);
     });
 });
 

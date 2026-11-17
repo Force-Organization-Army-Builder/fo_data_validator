@@ -163,6 +163,8 @@ Data that uses `effects` or `units` on a list choice's values needs validator **
 
 Data that uses game `traits` needs validator **2.0.0** or later, and an app that supports them. From 2.0.0 counts must be whole numbers and a fixed `min` may not be above a fixed `max`.
 
+Data that uses `source: "any"` on a root group type needs validator **2.1.0** or later, and an app that supports it.
+
 Data that declares `minValidatorVersion` needs validator **1.14.0** or later. From 1.14.0 every id, record key and `@selector` reference must be lowercase kebab-case.
 
 ## Releasing

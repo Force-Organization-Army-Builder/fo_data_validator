@@ -111,6 +111,14 @@
             "source": "ally",
             "max": "list.limit(points) / 1000"
         },
+        "detachment": {
+            "id": "detachment",
+            "name": "Detachment",
+            "description": "A detachment of heavy units from any faction, the army's own included",
+            "contingent": "root",
+            "source": "any",
+            "max": 1
+        },
         "reserve": {
             "id": "reserve",
             "name": "Reserve",
@@ -331,6 +339,16 @@
                     "repeat": { "max": "floor(list.limit(points) / 500)" }
                 }
             ]
+        },
+        "heavy-detachment": {
+            "id": "heavy-detachment",
+            "name": "Heavy Detachment",
+            "type": "detachment",
+            "slots": [{ "roles": ["heavy"], "repeat": { "max": 2 } }],
+            "when": {
+                "if": "list.limit(points) >= 1500",
+                "message": "Needs a points limit of at least 1,500"
+            }
         },
         "heavy-formation": {
             "id": "heavy-formation",
