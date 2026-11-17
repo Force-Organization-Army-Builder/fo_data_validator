@@ -244,6 +244,26 @@ export const TraitEffectSchema = z
         "changes the unit's traits (traits belong to the whole unit, so there is no profile filter); traits match as case-insensitive text"
     );
 
+export const SlotTagEffectSchema = z
+    .strictObject({
+        kind: z.literal('slotTag'),
+        add: z
+            .array(SlugSchema)
+            .describe(
+                'game-declared slot tags the slot holding the unit counts as having, e.g. `["prime"]`'
+            ),
+        categories: z
+            .array(SlugSchema)
+            .optional()
+            .describe(
+                'for the tags it adds, only slot options of these `category`s are offered, e.g. `["honour"]`; left out, every option of the tag. Combined with the slot\'s own `tagOptions` and other slotTag effects on the same tag, only options every restriction allows are offered'
+            ),
+        when: ConditionSchema.optional(),
+    })
+    .describe(
+        "(validator 2.2.0) the slot that holds the unit counts as having these slot tags, so it offers their slot options and `slot.is(tag:…)` reads true. It tags the slot, not the unit, so there is no profile filter; in place before slot options are offered. Not allowed in a slot option's `effects`"
+    );
+
 /* Slots filled from another faction (or other sub-factions of one) */
 
 export const SlotSourceSchema = z
@@ -275,7 +295,17 @@ const unitEffect = () => z.discriminatedUnion('kind', unitEffects);
 
 export const UnitEffectSchema = unitEffect();
 
-export const SlotUnitEffectSchema = unitEffect().describe(
+/*
+ * The effects on a unit plus `slotTag` (validator 2.2.0), which tags the slot
+ * holding the unit: allowed everywhere a unit effect is except slot options,
+ * which are applied last, so a tag they added could never offer anything
+ */
+const heldEffects = [...unitEffects, SlotTagEffectSchema] as const;
+const heldEffect = () => z.discriminatedUnion('kind', heldEffects);
+
+export const HeldUnitEffectSchema = heldEffect();
+
+export const SlotUnitEffectSchema = heldEffect().describe(
     "applied to the unit filling the slot, after the group's effects, e.g. replacing a borrowed unit's faction trait"
 );
 
@@ -476,7 +506,7 @@ export const StatTemplateSchema = z.strictObject({
     stats: z.array(StatDefinitionSchema),
 });
 
-export const ListChoiceValueEffectSchema = unitEffect().describe(
+export const ListChoiceValueEffectSchema = heldEffect().describe(
     "applied to every matching unit in the list while the value is picked, right after the unit's own traits and sub-faction modifiers; the pick is already the condition, so a `when` needs no `choice()`"
 );
 
@@ -491,7 +521,7 @@ export const ListChoiceValueSchema = z
             .array(ListChoiceValueEffectSchema)
             .optional()
             .describe(
-                'stat, special-rule and trait effects on every matching unit in the list while this value is picked (validator 1.13.0), e.g. a stance value giving every unit a trait'
+                'stat, special-rule, trait and slot-tag effects on every matching unit in the list while this value is picked (validator 1.13.0), e.g. a stance value giving every unit a trait'
             ),
     })
     .describe("One of a list choice's values");
@@ -691,7 +721,7 @@ export const OptionSchema = z.strictObject({
             "ids of shared sub-choices made with the option, e.g. a weapon's `mount`"
         ),
     effects: z
-        .array(unitEffect())
+        .array(heldEffect())
         .optional()
         .describe(
             'applied to the unit while the option is picked, e.g. armour plating raising armour'
@@ -961,6 +991,18 @@ export const EquipmentSchema = z.strictObject({
 
 /* Groups (formations, retinues, teams) */
 
+export const TagOptionsSchema = z
+    .strictObject({
+        categories: z
+            .array(SlugSchema)
+            .describe(
+                'only slot options with one of these `category`s are offered for the tag'
+            ),
+    })
+    .describe(
+        "Limits the slot options a slot offers for one of its tags (validator 2.2.0). Where several restrictions apply to one tag on one slot (this and slotTag effects' `categories`), only options every one of them allows are offered"
+    );
+
 export const SlotSchema = z.strictObject({
     roles: z
         .array(SlugSchema)
@@ -985,6 +1027,12 @@ export const SlotSchema = z.strictObject({
     units: UnitSelectorOrRefSchema.optional().describe(
         "only matching units may fill this slot; with a `source`, `unitIds` are the source's units"
     ),
+    tagOptions: z
+        .record(SlugSchema, TagOptionsSchema)
+        .optional()
+        .describe(
+            '(validator 2.2.0) tag id → which of that tag\'s slot options this slot offers, e.g. `{ "prime": { "categories": ["honour"] } }`; each key must be one of the slot\'s `tags`. A tag left out offers every option'
+        ),
     source: SlotSourceSchema.optional(),
     effects: z.array(SlotUnitEffectSchema).optional(),
     when: ConditionSchema.optional(),
@@ -1005,7 +1053,7 @@ export const GroupRequirementSchema = z
     })
     .describe('units the list must already hold before the group can be taken');
 
-export const GroupEffectSchema = unitEffect().describe(
+export const GroupEffectSchema = heldEffect().describe(
     'applied to every unit in the group, including units in slots added later'
 );
 
@@ -1056,11 +1104,16 @@ export const AllowedRolesEffectSchema = z
     })
     .describe('units of these roles may also fill the slot');
 
-export const SlotOptionEffectSchema = z.discriminatedUnion('kind', [
-    ...unitEffects,
-    SlotEffectSchema,
-    AllowedRolesEffectSchema,
-]);
+export const SlotOptionEffectSchema = z.discriminatedUnion(
+    'kind',
+    [...unitEffects, SlotEffectSchema, AllowedRolesEffectSchema],
+    {
+        error: (issue) =>
+            (issue.input as { kind?: unknown } | undefined)?.kind === 'slotTag'
+                ? "a slot option can't have a slotTag effect: slot options are applied last, so a tag one added could never offer anything; give the slot the tag (`tags`), or put the slotTag effect on the group, the slot, an upgrade option, a sub-faction unit modifier or a list choice value"
+                : undefined,
+    }
+);
 
 export const SlotOptionSchema = z
     .strictObject({
@@ -1068,6 +1121,9 @@ export const SlotOptionSchema = z
         id: SlugSchema,
         text: z.string(),
         slotTag: SlugSchema.describe('offered on slots with this tag'),
+        category: SlugSchema.optional().describe(
+            "(validator 2.2.0) what kind of option this is among its tag's, e.g. `honour`; a slot's `tagOptions` and a slotTag effect's `categories` offer only options of the categories they name"
+        ),
         slotRoles: z
             .array(SlugSchema)
             .optional()
@@ -1238,7 +1294,7 @@ export const UnitModifierActionSchema = z.discriminatedUnion('kind', [
         .describe(
             "the matched units can't be taken (e.g. a sub-faction's banned vehicles)"
         ),
-    ...unitEffects,
+    ...heldEffects,
 ]);
 
 export const UnitModifierSchema = z

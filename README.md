@@ -165,6 +165,8 @@ Data that uses game `traits` needs validator **2.0.0** or later, and an app that
 
 Data that uses `source: "any"` on a root group type needs validator **2.1.0** or later, and an app that supports it.
 
+Data that uses a `slotTag` effect, a slot option's `category` or a slot's `tagOptions` needs validator **2.2.0** or later, and an app that supports them.
+
 Data that declares `minValidatorVersion` needs validator **1.14.0** or later. From 1.14.0 every id, record key and `@selector` reference must be lowercase kebab-case.
 
 ## Releasing

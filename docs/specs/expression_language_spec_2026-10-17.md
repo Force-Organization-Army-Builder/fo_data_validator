@@ -191,7 +191,7 @@ Group type ids and group ids must not collide within a game, since `group:` matc
 
 The same kind can mean different things on different scopes; the checker knows each scope's type, so it stays unambiguous:
 
-- `tag:` on `slot` means the game's slot tags; on `unit` and `profile` the unit's and profile's tags;
+- `tag:` on `slot` means the game's slot tags; on `unit` and `profile` the unit's and profile's tags. `slot.is(tag:x)` is true when the slot has the tag in its `tags` or a slot-tag effect in force gives it (data schema spec §5.3, validator 2.2.0);
 - `type:` on `unit`/`profile` means unit type; on `group`/`root` group type.
 
 Traits are free text too and match the same way (`trait:gun-line` for `Gun Line`). A unit's traits include those effects give it (data schema spec §5.2), so the known traits are every unit's `traits` plus every trait effect's `add` and `replace.to`, across all the game's factions (`main` and `list` see other factions' units), and profiles' `traits` (validator 1.11.0). An unknown `trait:` is a warning. On a profile, `is(trait:…)` tests its unit's traits and its own; on a unit (and in container `count`), a trait any of its profiles has counts.
@@ -214,7 +214,7 @@ Unknown ids get "did you mean". Tags are free text in unit data (`Sergeant`, `He
 | `has(ref)` | as `count` | as `count` | bool | `count(ref) > 0` |
 | `is(ref)` | `unit` | unit ref | bool | the unit matches |
 | | `profile` | `type:`, `tag:`, `trait:` | bool | the profile (with its unit's type, tags and traits) matches |
-| | `slot` | `tag:`, `role:` | bool | the slot has that tag / accepts that role |
+| | `slot` | `tag:`, `role:` | bool | the slot has that tag (its own `tags` or one a slot-tag effect gives it, validator 2.2.0) / accepts that role |
 | | `group`, `root` | `type:`, group ref | bool | the group is of that type, or that specific group |
 | | `contingent`, `main`, `list` | `faction:`, `subfaction:` | bool | the contingent's faction source (or the list's main one); `subfaction:` is true when it is any of the sub-factions taken |
 | `sum(resource[, ref])` | `unit`, `group`, `contingent`, `root`, `main`, `list` | resource name, optional unit ref | number | resource spent in scope, optionally only on matching units |

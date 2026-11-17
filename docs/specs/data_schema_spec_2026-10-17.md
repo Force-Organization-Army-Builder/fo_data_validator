@@ -88,14 +88,14 @@ Each says how groups of that type form contingents:
 "reserve": { "id": "reserve", "name": "Reserve", "contingent": { "linksTo": ["core", "allied"] } }
 ```
 
-- **Root** groups start a contingent; `source: "main"` uses the list's main faction and sub-faction, `"ally"` a different one the player picks, and `"any"` (validator 2.1.0) any faction of the game the player picks, the main faction included (e.g. a Lord of War detachment that may be of any faction: `"lord-of-war": { "id": "lord-of-war", "name": "Lord of War", "contingent": "root", "source": "any", "max": 1 }`). Left out, `source` is `"main"`. The list's main contingent is always the one from a `main` root: a contingent from an `any` root is not, even when it takes the main faction, and a faction's `defaultGroup` must be of a `main` root type. `source` on a linked group type is a warning, since it is never read.
+- **Root** groups start a contingent; `source: "main"` uses the list's main faction and sub-faction, `"ally"` a different one the player picks, and `"any"` (validator 2.1.0) any faction of the game the player picks, the main faction included (e.g. a detachment that may be of any faction: `"detachment": { "id": "detachment", "name": "Detachment", "contingent": "root", "source": "any", "max": 1 }`). Left out, `source` is `"main"`. The list's main contingent is always the one from a `main` root: a contingent from an `any` root is not, even when it takes the main faction, and a faction's `defaultGroup` must be of a `main` root type. `source` on a linked group type is a warning, since it is never read.
 - **Linked** groups attach to a root of one of the `linksTo` types and share its faction source.
 - `min` / `max` limit how many a list may hold.
 - A game may have a single root type and no linked types at all.
 
 ### 3.4 Slot tags
 
-Game-declared tags for slots: `"slotTags": { "prime": { "id": "prime", "name": "Prime", "optionLabel": "Prime Option", "color": "amber", "icon": "star" } }`. A tag offers the slot options written for it (§3.8). From validator 1.5.0 a tag may name a `color` and an `icon` from the app's fixed palette and icon set, which mark its slots; the checker does not validate the names, since the app owns the lists and falls back to a look derived from the id.
+Game-declared tags for slots: `"slotTags": { "prime": { "id": "prime", "name": "Prime", "optionLabel": "Prime Option", "color": "amber", "icon": "star" } }`. A tag offers the slot options written for it (§3.8). A slot has the tags in its `tags`, plus any a slot-tag effect gives it (§5.3, validator 2.2.0). From validator 1.5.0 a tag may name a `color` and an `icon` from the app's fixed palette and icon set, which mark its slots; the checker does not validate the names, since the app owns the lists and falls back to a look derived from the id.
 
 ### 3.5 Resources
 
@@ -162,7 +162,16 @@ The game declares unit and weapon templates; each profile names its template and
 
 Behaviour that once needed a TypeScript "mechanic" is plain data built from two general pieces, so the engine holds no game's rules and the Data Editor edits them like any record.
 
-**Slot options** (`slotOptions` records in the game, factions and sub-factions) are choices a slot with a tag offers, one per tag, e.g. special benefits or enhancements. Each names its `slotTag`, may limit itself to slots of some roles (`slotRoles`) and, from validator 1.4.0, to units matching a selector (`units`, matched as the unit stands before slot-option effects, so a trait from an option or the group counts), may cost something (`cost`, added to the unit in the slot) and has `effects`: stat changes and special rules on the unit's profiles, an extra slot in the group (`slot`, with role choices and optionally `units`, a `source` and `effects`, §7.1), or other roles allowed into the slot (`allowedRoles`). The tag's `optionLabel` names them in the UI ("Prime Option"). A list slot records the picks as `slotOptions: { [tag]: { option, role? } }`.
+**Slot options** (`slotOptions` records in the game, factions and sub-factions) are choices a slot with a tag offers, one per tag, e.g. special benefits or enhancements. Each names its `slotTag`, may limit itself to slots of some roles (`slotRoles`) and, from validator 1.4.0, to units matching a selector (`units`, matched as the unit stands before slot-option effects, so a trait from an option or the group counts), may cost something (`cost`, added to the unit in the slot) and has `effects`: stat changes and special rules on the unit's profiles, an extra slot in the group (`slot`, with role choices and optionally `units`, a `source` and `effects`, §7.1), or other roles allowed into the slot (`allowedRoles`). The tag's `optionLabel` names them in the UI ("Prime Option"). A list slot records the picks as `slotOptions: { [tag]: { option, role? } }`. A slot option's `effects` can't include a slot-tag effect (§5.3): slot options are applied last, so a tag one added could never offer anything, and the shape check rejects it with that reason.
+
+**Categories and per-tag restrictions** (validator 2.2.0). A slot option may name a `category` (an id), what kind of option it is among its tag's, e.g. `"honour"`: options of one kind among a tag's options are a category of that tag, not a tag of their own. Two things restrict a tag on a slot to some categories:
+
+- the slot's **`tagOptions`**: tag id → `{ "categories": [...] }`, e.g. `"tagOptions": { "prime": { "categories": ["honour"] } }` for a rule such as "units in this group's Prime slots may only take Honour options, and no other Prime options". Each key must be one of the slot's own `tags`;
+- a slot-tag effect's **`categories`** (§5.3), for each tag it adds.
+
+**Combining.** The options a slot offers for a tag are that tag's options (with the usual `slotRoles` and `units` limits) whose `category` every restricting source on that tag and slot allows: the slot's `tagOptions` entry for the tag, if any, and the `categories` of every slot-tag effect in force on the slot that adds the tag and has `categories`. The allowed categories are the intersection of the sources' lists. A source with no categories (the tag in `tags` without a `tagOptions` entry, a slot-tag effect without `categories`) restricts nothing and never widens a restricted source. With no restricting source every option of the tag is offered. An option without a `category` is offered only where its tag is unrestricted. If the intersection is empty, the slot offers nothing for that tag.
+
+Checks: a `tagOptions` key that isn't a game slot tag, or isn't among the slot's `tags`, is an error; an empty `categories` list is an error and a category listed twice a warning; a category that no slot option of the tag has, in the game or any loaded faction or sub-faction, is a warning ("offers nothing"). `category` is an id.
 
 **Contingent resources** (`scope: "contingent"`, §3.5) are granted and spent within each contingent:
 
@@ -200,7 +209,7 @@ A **sub-faction** (`SubFaction`) is a modifier of its parent:
 
 - `parent: { faction, versions? }` may name a faction from another source in the same game (`examples/extension/sub-factions/irregulars.json`).
 - **`overrides`** lists records that intentionally replace the parent's (same kind and id). Any other id collision with the parent is an error, so accidental overrides can't happen.
-- **Unit modifiers** pick units with a selector and apply actions (`addUpgrade`, stat, special-rule and trait effects (§5.2), or **`unavailable`**: matched units can't be taken, with a message). This is how a sub-faction bans units:
+- **Unit modifiers** pick units with a selector and apply actions (`addUpgrade`, stat, special-rule and trait effects (§5.2), slot-tag effects (§5.3, validator 2.2.0), or **`unavailable`**: matched units can't be taken, with a message). This is how a sub-faction bans units:
 
     ```json
     "no-walkers": {
@@ -322,7 +331,23 @@ A saved list's unit records `composition: { [blockId]: copies }` instead of `add
 
 A trait effect (validator 1.2.0) changes a unit's `traits`: `add` gives traits, `remove` takes them away if present, and `replace` takes away any of `from` and gives `to` only if one was there. There is no profile filter and its `when` has no `profile` scope. `add` gives the trait to the unit; `remove` and `replace` (validator 1.11.0) also act on each profile's own `traits`, so a profile that held one of `from` gets `to` on that profile (a faction trait swap reaches every model, and a profile-only trait stays on its profile). It may appear wherever stat and special-rule effects do: option `effects`, slot-option `effects`, unit-modifier `actions`, group `effects` (§7) and list choice values' `effects` (§3.7). At least one of `add`, `remove` and `replace` is required; a trait both given and taken away is a warning.
 
-**Order.** The app resolves a played unit's traits and effects in steps: the unit's own `traits`, then sub-faction unit modifiers (together, the resolved faction unit), list choice value effects (§3.7, validator 1.13.0), option effects, the group's effects, the slot's `effects` (§7.1), and slot-option effects. Each step's conditions see the traits from the steps before it, and a choice value's `units` selector sees the resolved faction unit. A group's and its slots' `units` selectors see the unit's traits before the group's and slot options' effects (a group can't admit units by the trait it gives them, but can by one a list choice gives); a slot with a `source` sees only the unit's own `traits`. Everything else (`trait:` references in other expressions, list rules) sees the final traits.
+**Order.** The app resolves a played unit's traits and effects in steps: the unit's own `traits`, then sub-faction unit modifiers (together, the resolved faction unit), list choice value effects (§3.7, validator 1.13.0), option effects, the group's effects, the slot's `effects` (§7.1), and slot-option effects. Each step's conditions see the traits from the steps before it, and a choice value's `units` selector sees the resolved faction unit. A group's and its slots' `units` selectors see the unit's traits before the group's and slot options' effects (a group can't admit units by the trait it gives them, but can by one a list choice gives); a slot with a `source` sees only the unit's own `traits`. Everything else (`trait:` references in other expressions, list rules) sees the final traits. Slot-tag effects (§5.3) come from the steps before slot options, so every tag they add is in place before the slot's options are offered.
+
+### 5.3 Slot-tag effects
+
+```json
+{ "kind": "slotTag", "add": ["prime"] }
+{ "kind": "slotTag", "add": ["prime"], "categories": ["honour"],
+  "when": { "if": "group.is(type:elite)", "message": "Only in an Elite formation" } }
+```
+
+A slot-tag effect (validator 2.2.0) makes the slot that holds the unit count as having the game slot tags in `add`: the slot offers those tags' slot options (§3.8) and `slot.is(tag:…)` reads true (expression spec §9.2). It tags the slot, not the unit, so like a trait effect it has no profile filter and its `when` has no `profile` scope (it has `unit`, `slot`, `group`, `contingent`, `root`, `main`, `list`, e.g. `group.is(type:elite)`). `categories` restricts which of the added tags' options are offered (§3.8, Combining). A tag the slot already has stays one tag: adding it again only adds the restriction, if the effect has `categories`.
+
+It may appear in unit-modifier `actions` (§4), option `effects` (§6), group `effects` (§7), slot `effects` (§7, §7.1, slots a special rule or slot option adds included) and list choice values' `effects` (§3.7), and applies while the unit is in the slot and the effect is in force (its `when` true, its option picked, its choice value picked). It may **not** appear in a slot option's `effects` (§3.8). Its `when` should not read `slot.is(tag:…)` of a tag it adds itself.
+
+It is for rules such as "while this sub-faction is taken, units in an Elite formation may each take one Honour option, as if they filled a Prime slot", written as the second effect above on a unit modifier of the sub-faction (`examples/full`'s `veterans`, `honoured-heavies`).
+
+Checks: each tag in `add` must be declared in the game's `slotTags` (an error otherwise); `add` needs at least one tag, and one listed twice is a warning; `categories` as for `tagOptions` (§3.8).
 
 ## 6. Upgrades and options
 
@@ -400,10 +425,10 @@ A unit's upgrades hold options or references to faction upgrades, and may use `r
 ```
 
 - `type` is a game group type.
-- **Slots** have `roles` (one or more), optional `tags` (e.g. `prime`), `required` (compulsory slots), `units` (a `UnitSelector`), `when`, and **`repeat`**: the slot may be added more than once, each copy holding one unit. That covers a team of vehicles (`{ "min": 1 }`) and optional slots.
+- **Slots** have `roles` (one or more), optional `tags` (e.g. `prime`), `tagOptions` (validator 2.2.0: which categories of a tag's slot options the slot offers, §3.8), `required` (compulsory slots), `units` (a `UnitSelector`), `when`, and **`repeat`**: the slot may be added more than once, each copy holding one unit. That covers a team of vehicles (`{ "min": 1 }`) and optional slots.
 - `requires[].scope` is `contingent` (default) or `root`.
 - Groups may have `when`, `min` and `max`. `min` makes a group mandatory, e.g. a required veteran formation.
-- **`effects`** (validator 1.2.0): stat, special-rule and trait effects applied to every unit in the group, including units in slots a slot option adds. "Every unit in this group gains the Gun Line trait" is `"effects": [{ "kind": "trait", "add": ["Gun Line"] }]`. Each effect may carry `profiles` (stat and special-rule effects) and `when`.
+- **`effects`** (validator 1.2.0): stat, special-rule, trait and slot-tag (§5.3) effects applied to every unit in the group, including units in slots a slot option adds. "Every unit in this group gains the Gun Line trait" is `"effects": [{ "kind": "trait", "add": ["Gun Line"] }]`. Each effect may carry `profiles` (stat and special-rule effects) and `when`.
 
 ### 7.1 Slots filled from elsewhere
 
@@ -421,7 +446,7 @@ Validator 1.3.0. Some rules add a slot that units from another faction, or from 
 - **`source.faction`** is any faction of the game, possibly from another source, and may be the contingent's own. **`source.subFactions`** adds units of that faction's sub-factions, whether or not the contingent took them: `"any"` for every one loaded, or a list of ids. Left out, only the faction's own units are offered (not its sub-factions', and not the contingent's).
 - **Picking units.** The slot's `units` selector picks among the source's units, so a rule written as "any unit except…" needs no list of ids and keeps working as units are added. Its `unitIds` are the source's units; named selectors (`"@name"`) are the slot owner's, as everywhere. The selector sees only each unit's own `traits`, before any unit modifier or effect. The group's own `units` doesn't apply to the slot. Use `exclude` (§8) for "not…" conditions.
 - **The unit keeps its own records.** Its gear, special rules, upgrades and composition are the ones its home faction (and home sub-faction) defines, already checked there. Its home sub-faction's unit modifiers don't come along; the contingent's sub-faction unit modifiers apply as to any unit of the contingent, and the slot may be filled even though the unit isn't of the contingent's faction.
-- **`effects`** on the slot (stat, special-rule and trait effects) apply to the unit in it, after the group's `effects`, which apply too. A trait effect is how a rule like "its faction trait becomes Veterans" is written. Their special rules resolve where the slot is defined.
+- **`effects`** on the slot (stat, special-rule, trait and slot-tag effects) apply to the unit in it, after the group's `effects`, which apply too. A trait effect is how a rule like "its faction trait becomes Veterans" is written. Their special rules resolve where the slot is defined.
 - **Where it can appear:** a group's `slots` (with `roles`), a slot option's `slot` effect, and a special rule's **`slots`**: slots each unit with the rule adds to its group, once per unit ("when a model with this rule is in a group, add a slot…"). A slot a mechanic adds has `roleChoices` (at least one), optional `units`, `source` and `effects`.
 
 The checker reports an unknown `source` faction or sub-faction (a sub-faction must have the source faction as its parent), and `unitIds` that aren't among the source's units, and checks the slot's effects like any effect.

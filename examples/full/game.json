@@ -344,7 +344,15 @@
             "id": "heavy-detachment",
             "name": "Heavy Detachment",
             "type": "detachment",
-            "slots": [{ "roles": ["heavy"], "repeat": { "max": 2 } }],
+            "description": "Units in its Prime slots may only take Honour options",
+            "slots": [
+                {
+                    "roles": ["heavy"],
+                    "tags": ["prime"],
+                    "tagOptions": { "prime": { "categories": ["honour"] } },
+                    "repeat": { "max": 2 }
+                }
+            ],
             "when": {
                 "if": "list.limit(points) >= 1500",
                 "message": "Needs a points limit of at least 1,500"
@@ -445,6 +453,15 @@
             "slotTag": "prime",
             "slotRoles": ["troop"],
             "effects": [{ "kind": "allowedRoles", "roles": ["support"] }]
+        },
+        "honoured-crew": {
+            "id": "honoured-crew",
+            "name": "Honoured Crew",
+            "text": "The unit in this slot gains Fearless.",
+            "slotTag": "prime",
+            "category": "honour",
+            "slotRoles": ["heavy"],
+            "effects": [{ "kind": "specialRule", "rule": { "id": "fearless" } }]
         }
     },
     "subChoices": {
