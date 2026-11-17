@@ -508,7 +508,7 @@
                     "description": "`root` groups start a contingent; linked groups attach to a root group of one of the listed types and share its faction source"
                 },
                 "source": {
-                    "description": "root groups only: `main` uses the list's main faction and sub-faction, `ally` a different one the player picks. Left out = `main`",
+                    "description": "root groups only: `main` uses the list's main faction and sub-faction, `ally` a different one the player picks, `any` (validator 2.1.0) any faction of the game the player picks, the main one included. Only a `main` root starts the main contingent. Left out = `main`",
                     "allOf": [
                         {
                             "$ref": "#/definitions/__schema15"
@@ -570,7 +570,8 @@
             "type": "string",
             "enum": [
                 "main",
-                "ally"
+                "ally",
+                "any"
             ]
         },
         "__schema16": {

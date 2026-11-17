@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.1.0
+
+- **Root group types with `source: "any"`.** A root group type's `source` takes a third value: `"any"` starts a contingent whose faction (and sub-factions) the player picks freely from every faction of the game, **the list's main faction included**. `"ally"` stays "a faction other than the main one" and `"main"` is unchanged. For a detachment that may be of any faction, as long as all its units come from that one faction: `"detachment": { "id": "detachment", "name": "Detachment", "contingent": "root", "source": "any", "max": 1 }`. Until now the only way to let such a detachment take the army's own faction was to link it to the main root, which tied it to the main faction.
+- A contingent from an `any` root is never the main contingent, even when it takes the main faction: `main` still means the contingent whose root type has `source: main`. As before, a faction's `defaultGroup` must be of a `main` root type, so a group of an `any` root type there is an error, and `source` on a linked group type is a warning.
+- The JSON Schema for game files accepts `"any"`.
+- `examples/full` has a `detachment` group type (`source: "any"`, at most one) with a `heavy-detachment` group, and declares `"minValidatorVersion": "2.1.0"`.
+- **For the app:** `GroupType['source']` is now `'main' | 'ally' | 'any'`. The builder needs to offer every faction of the game (the main one included) when the player adds a group of an `any` root type, and must not treat that contingent as the main one.
+- `schemaVersion` stays 1 and `expressionVersion` stays 1; everything is additive. Data using `source: "any"` should set `"minValidatorVersion": "2.1.0"` in its manifest, and needs an app that supports it.
+
 ## 2.0.0
 
 A major release, because some data that passed 1.x is now rejected. The `v1` tag and the `@1` JSON Schema URLs stay on 1.14.0; to move, use `@v2` for the GitHub Action, `#v2.0.0` in `package.json`, and `@2` in `$schema` URLs. `schemaVersion` stays 1 and `expressionVersion` stays 1, so a source needs no change to its manifest.
