@@ -1103,9 +1103,15 @@ export const GroupSchema = z.strictObject({
 /* Slot options (choices a tagged slot offers) */
 
 export const SlotEffectSchema = z
-    .strictObject({ kind: z.literal('slot'), ...addedSlot })
+    .strictObject({
+        kind: z.literal('slot'),
+        ...addedSlot,
+        count: PositiveWholeNumberSchema.optional().describe(
+            'how many such slots the option adds to the group (default 1), each holding its own unit (validator 2.4.0); with several `roleChoices` the player picks one role, which all of them take, e.g. `{ "kind": "slot", "roleChoices": ["support"], "count": 3 }`'
+        ),
+    })
     .describe(
-        'adds a slot to the group; with several roles the player picks one'
+        'adds a slot (or `count` slots) to the group; with several roles the player picks one'
     );
 
 export const AllowedRolesEffectSchema = z

@@ -31,10 +31,10 @@
             "$ref": "#/definitions/__schema136"
         },
         "subChoices": {
-            "$ref": "#/definitions/__schema148"
+            "$ref": "#/definitions/__schema149"
         },
         "listRules": {
-            "$ref": "#/definitions/__schema151"
+            "$ref": "#/definitions/__schema152"
         },
         "name": {
             "$ref": "#/definitions/__schema4"
@@ -46,22 +46,22 @@
             "$ref": "#/definitions/__schema3"
         },
         "version": {
-            "$ref": "#/definitions/__schema171"
-        },
-        "parent": {
             "$ref": "#/definitions/__schema172"
         },
-        "group": {
+        "parent": {
             "$ref": "#/definitions/__schema173"
         },
-        "when": {
+        "group": {
             "$ref": "#/definitions/__schema174"
         },
-        "overrides": {
+        "when": {
             "$ref": "#/definitions/__schema175"
         },
+        "overrides": {
+            "$ref": "#/definitions/__schema176"
+        },
         "unitModifiers": {
-            "$ref": "#/definitions/__schema177"
+            "$ref": "#/definitions/__schema178"
         }
     },
     "required": [
@@ -2399,6 +2399,9 @@
                             },
                             "effects": {
                                 "$ref": "#/definitions/__schema121"
+                            },
+                            "count": {
+                                "$ref": "#/definitions/__schema146"
                             }
                         },
                         "required": [
@@ -2406,16 +2409,16 @@
                             "roleChoices"
                         ],
                         "additionalProperties": false,
-                        "description": "adds a slot to the group; with several roles the player picks one"
+                        "description": "adds a slot (or `count` slots) to the group; with several roles the player picks one"
                     },
                     {
                         "type": "object",
                         "properties": {
                             "kind": {
-                                "$ref": "#/definitions/__schema146"
+                                "$ref": "#/definitions/__schema147"
                             },
                             "roles": {
-                                "$ref": "#/definitions/__schema147"
+                                "$ref": "#/definitions/__schema148"
                             }
                         },
                         "required": [
@@ -2433,16 +2436,24 @@
             "const": "slot"
         },
         "__schema146": {
+            "description": "how many such slots the option adds to the group (default 1), each holding its own unit (validator 2.4.0); with several `roleChoices` the player picks one role, which all of them take, e.g. `{ \"kind\": \"slot\", \"roleChoices\": [\"support\"], \"count\": 3 }`",
+            "allOf": [
+                {
+                    "$ref": "#/definitions/__schema11"
+                }
+            ]
+        },
+        "__schema147": {
             "type": "string",
             "const": "allowedRoles"
         },
-        "__schema147": {
+        "__schema148": {
             "type": "array",
             "items": {
                 "$ref": "#/definitions/__schema3"
             }
         },
-        "__schema148": {
+        "__schema149": {
             "type": "object",
             "propertyNames": {
                 "$ref": "#/definitions/__schema3"
@@ -2460,7 +2471,7 @@
                         "$ref": "#/definitions/__schema3"
                     },
                     "values": {
-                        "$ref": "#/definitions/__schema149"
+                        "$ref": "#/definitions/__schema150"
                     },
                     "default": {
                         "$ref": "#/definitions/__schema3"
@@ -2476,7 +2487,7 @@
                 "description": "A choice made alongside an option, defined once and shared by every option that offers it"
             }
         },
-        "__schema149": {
+        "__schema150": {
             "type": "object",
             "propertyNames": {
                 "$ref": "#/definitions/__schema3"
@@ -2497,7 +2508,7 @@
                         "description": "resource id → multiplier for the option's cost, e.g. a turret mount `{ \"points\": 3 }`",
                         "allOf": [
                             {
-                                "$ref": "#/definitions/__schema150"
+                                "$ref": "#/definitions/__schema151"
                             }
                         ]
                     },
@@ -2517,7 +2528,7 @@
                 "additionalProperties": false
             }
         },
-        "__schema150": {
+        "__schema151": {
             "type": "object",
             "propertyNames": {
                 "$ref": "#/definitions/__schema3"
@@ -2526,15 +2537,15 @@
                 "type": "number"
             }
         },
-        "__schema151": {
+        "__schema152": {
             "description": "list rules that apply to contingents using this faction (or sub-faction), e.g. a rule about this faction's own traits",
             "allOf": [
                 {
-                    "$ref": "#/definitions/__schema152"
+                    "$ref": "#/definitions/__schema153"
                 }
             ]
         },
-        "__schema152": {
+        "__schema153": {
             "type": "object",
             "propertyNames": {
                 "$ref": "#/definitions/__schema3"
@@ -2545,7 +2556,7 @@
                         "type": "object",
                         "properties": {
                             "kind": {
-                                "$ref": "#/definitions/__schema153"
+                                "$ref": "#/definitions/__schema154"
                             },
                             "id": {
                                 "$ref": "#/definitions/__schema3"
@@ -2554,16 +2565,16 @@
                                 "$ref": "#/definitions/__schema3"
                             },
                             "units": {
-                                "$ref": "#/definitions/__schema154"
-                            },
-                            "contingentTypes": {
                                 "$ref": "#/definitions/__schema155"
                             },
+                            "contingentTypes": {
+                                "$ref": "#/definitions/__schema156"
+                            },
                             "max": {
-                                "$ref": "#/definitions/__schema157"
+                                "$ref": "#/definitions/__schema158"
                             },
                             "message": {
-                                "$ref": "#/definitions/__schema158"
+                                "$ref": "#/definitions/__schema159"
                             }
                         },
                         "required": [
@@ -2580,28 +2591,28 @@
                         "type": "object",
                         "properties": {
                             "kind": {
-                                "$ref": "#/definitions/__schema159"
+                                "$ref": "#/definitions/__schema160"
                             },
                             "id": {
                                 "$ref": "#/definitions/__schema3"
                             },
                             "units": {
-                                "$ref": "#/definitions/__schema160"
-                            },
-                            "groupTypes": {
                                 "$ref": "#/definitions/__schema161"
                             },
-                            "scope": {
+                            "groupTypes": {
                                 "$ref": "#/definitions/__schema162"
                             },
-                            "min": {
+                            "scope": {
                                 "$ref": "#/definitions/__schema163"
                             },
-                            "max": {
+                            "min": {
                                 "$ref": "#/definitions/__schema164"
                             },
-                            "message": {
+                            "max": {
                                 "$ref": "#/definitions/__schema165"
+                            },
+                            "message": {
+                                "$ref": "#/definitions/__schema166"
                             }
                         },
                         "required": [
@@ -2617,16 +2628,16 @@
                         "type": "object",
                         "properties": {
                             "kind": {
-                                "$ref": "#/definitions/__schema166"
+                                "$ref": "#/definitions/__schema167"
                             },
                             "id": {
                                 "$ref": "#/definitions/__schema3"
                             },
                             "scope": {
-                                "$ref": "#/definitions/__schema167"
+                                "$ref": "#/definitions/__schema168"
                             },
                             "groupTypes": {
-                                "$ref": "#/definitions/__schema169"
+                                "$ref": "#/definitions/__schema170"
                             },
                             "when": {
                                 "$ref": "#/definitions/__schema50"
@@ -2643,11 +2654,11 @@
                 ]
             }
         },
-        "__schema153": {
+        "__schema154": {
             "type": "string",
             "const": "resourceCap"
         },
-        "__schema154": {
+        "__schema155": {
             "description": "count only these units; left out = every unit",
             "allOf": [
                 {
@@ -2655,21 +2666,21 @@
                 }
             ]
         },
-        "__schema155": {
+        "__schema156": {
             "description": "count only units in contingents whose root group is one of these types",
             "allOf": [
                 {
-                    "$ref": "#/definitions/__schema156"
+                    "$ref": "#/definitions/__schema157"
                 }
             ]
         },
-        "__schema156": {
+        "__schema157": {
             "type": "array",
             "items": {
                 "$ref": "#/definitions/__schema3"
             }
         },
-        "__schema157": {
+        "__schema158": {
             "anyOf": [
                 {
                     "type": "object",
@@ -2704,39 +2715,32 @@
                 }
             ]
         },
-        "__schema158": {
+        "__schema159": {
             "type": "string"
         },
-        "__schema159": {
+        "__schema160": {
             "type": "string",
             "const": "count"
         },
-        "__schema160": {
+        "__schema161": {
             "allOf": [
                 {
                     "$ref": "#/definitions/__schema107"
                 }
             ]
         },
-        "__schema161": {
+        "__schema162": {
             "type": "array",
             "items": {
                 "$ref": "#/definitions/__schema3"
             }
         },
-        "__schema162": {
+        "__schema163": {
             "type": "string",
             "enum": [
                 "group",
                 "contingent",
                 "list"
-            ]
-        },
-        "__schema163": {
-            "allOf": [
-                {
-                    "$ref": "#/definitions/__schema22"
-                }
             ]
         },
         "__schema164": {
@@ -2747,45 +2751,52 @@
             ]
         },
         "__schema165": {
-            "type": "string"
-        },
-        "__schema166": {
-            "type": "string",
-            "const": "expression"
-        },
-        "__schema167": {
-            "description": "`list` (default): the condition is checked once for the whole list. `group`: checked once for each group (of the listed `groupTypes`, or any) with `group`, `contingent`, `root`, `main` and `list` available; the message is reported for each group that fails",
             "allOf": [
                 {
-                    "$ref": "#/definitions/__schema168"
+                    "$ref": "#/definitions/__schema22"
                 }
             ]
         },
+        "__schema166": {
+            "type": "string"
+        },
+        "__schema167": {
+            "type": "string",
+            "const": "expression"
+        },
         "__schema168": {
+            "description": "`list` (default): the condition is checked once for the whole list. `group`: checked once for each group (of the listed `groupTypes`, or any) with `group`, `contingent`, `root`, `main` and `list` available; the message is reported for each group that fails",
+            "allOf": [
+                {
+                    "$ref": "#/definitions/__schema169"
+                }
+            ]
+        },
+        "__schema169": {
             "type": "string",
             "enum": [
                 "list",
                 "group"
             ]
         },
-        "__schema169": {
+        "__schema170": {
             "description": "with `scope: \"group\"`: only groups of these types",
             "allOf": [
                 {
-                    "$ref": "#/definitions/__schema170"
+                    "$ref": "#/definitions/__schema171"
                 }
             ]
         },
-        "__schema170": {
+        "__schema171": {
             "type": "array",
             "items": {
                 "$ref": "#/definitions/__schema3"
             }
         },
-        "__schema171": {
+        "__schema172": {
             "type": "string"
         },
-        "__schema172": {
+        "__schema173": {
             "type": "object",
             "properties": {
                 "faction": {
@@ -2801,7 +2812,7 @@
             ],
             "additionalProperties": false
         },
-        "__schema173": {
+        "__schema174": {
             "description": "one of the parent's `subFactionGroups`; left out, the `default` group. Sub-factions that can be taken together (different groups, or one group whose `max` may exceed 1) must not define the same record differently",
             "allOf": [
                 {
@@ -2809,7 +2820,7 @@
                 }
             ]
         },
-        "__schema174": {
+        "__schema175": {
             "description": "when the sub-faction may be taken, checked for the contingent it is taken for. Expressions may use `contingent`, `root`, `main` and `list`, e.g. `choice(stance) == defensive` or `main.is(subfaction:x)`",
             "allOf": [
                 {
@@ -2817,15 +2828,15 @@
                 }
             ]
         },
-        "__schema175": {
+        "__schema176": {
             "description": "records that intentionally replace the parent's (same kind and id); any other collision is an error",
             "allOf": [
                 {
-                    "$ref": "#/definitions/__schema176"
+                    "$ref": "#/definitions/__schema177"
                 }
             ]
         },
-        "__schema176": {
+        "__schema177": {
             "type": "array",
             "items": {
                 "type": "object",
@@ -2856,7 +2867,7 @@
                 "additionalProperties": false
             }
         },
-        "__schema177": {
+        "__schema178": {
             "type": "object",
             "propertyNames": {
                 "$ref": "#/definitions/__schema3"
@@ -2877,7 +2888,7 @@
                         "$ref": "#/definitions/__schema107"
                     },
                     "actions": {
-                        "$ref": "#/definitions/__schema178"
+                        "$ref": "#/definitions/__schema179"
                     }
                 },
                 "required": [
@@ -2890,7 +2901,7 @@
                 "description": "A sub-faction rule applied to every unit of the parent (and sub-faction) it selects"
             }
         },
-        "__schema178": {
+        "__schema179": {
             "type": "array",
             "items": {
                 "oneOf": [
@@ -2915,10 +2926,10 @@
                         "type": "object",
                         "properties": {
                             "kind": {
-                                "$ref": "#/definitions/__schema179"
+                                "$ref": "#/definitions/__schema180"
                             },
                             "message": {
-                                "$ref": "#/definitions/__schema180"
+                                "$ref": "#/definitions/__schema181"
                             }
                         },
                         "required": [
@@ -2943,11 +2954,11 @@
                 ]
             }
         },
-        "__schema179": {
+        "__schema180": {
             "type": "string",
             "const": "unavailable"
         },
-        "__schema180": {
+        "__schema181": {
             "type": "string"
         }
     },

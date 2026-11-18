@@ -320,7 +320,7 @@
             "description": "sub-choices options in every faction may offer",
             "allOf": [
                 {
-                    "$ref": "#/definitions/__schema126"
+                    "$ref": "#/definitions/__schema127"
                 }
             ]
         }
@@ -2105,6 +2105,9 @@
                             },
                             "effects": {
                                 "$ref": "#/definitions/__schema112"
+                            },
+                            "count": {
+                                "$ref": "#/definitions/__schema124"
                             }
                         },
                         "required": [
@@ -2112,16 +2115,16 @@
                             "roleChoices"
                         ],
                         "additionalProperties": false,
-                        "description": "adds a slot to the group; with several roles the player picks one"
+                        "description": "adds a slot (or `count` slots) to the group; with several roles the player picks one"
                     },
                     {
                         "type": "object",
                         "properties": {
                             "kind": {
-                                "$ref": "#/definitions/__schema124"
+                                "$ref": "#/definitions/__schema125"
                             },
                             "roles": {
-                                "$ref": "#/definitions/__schema125"
+                                "$ref": "#/definitions/__schema126"
                             }
                         },
                         "required": [
@@ -2139,16 +2142,24 @@
             "const": "slot"
         },
         "__schema124": {
+            "description": "how many such slots the option adds to the group (default 1), each holding its own unit (validator 2.4.0); with several `roleChoices` the player picks one role, which all of them take, e.g. `{ \"kind\": \"slot\", \"roleChoices\": [\"support\"], \"count\": 3 }`",
+            "allOf": [
+                {
+                    "$ref": "#/definitions/__schema100"
+                }
+            ]
+        },
+        "__schema125": {
             "type": "string",
             "const": "allowedRoles"
         },
-        "__schema125": {
+        "__schema126": {
             "type": "array",
             "items": {
                 "$ref": "#/definitions/__schema3"
             }
         },
-        "__schema126": {
+        "__schema127": {
             "type": "object",
             "propertyNames": {
                 "$ref": "#/definitions/__schema3"
@@ -2166,7 +2177,7 @@
                         "$ref": "#/definitions/__schema3"
                     },
                     "values": {
-                        "$ref": "#/definitions/__schema127"
+                        "$ref": "#/definitions/__schema128"
                     },
                     "default": {
                         "$ref": "#/definitions/__schema3"
@@ -2182,7 +2193,7 @@
                 "description": "A choice made alongside an option, defined once and shared by every option that offers it"
             }
         },
-        "__schema127": {
+        "__schema128": {
             "type": "object",
             "propertyNames": {
                 "$ref": "#/definitions/__schema3"
@@ -2203,7 +2214,7 @@
                         "description": "resource id → multiplier for the option's cost, e.g. a turret mount `{ \"points\": 3 }`",
                         "allOf": [
                             {
-                                "$ref": "#/definitions/__schema128"
+                                "$ref": "#/definitions/__schema129"
                             }
                         ]
                     },
@@ -2223,7 +2234,7 @@
                 "additionalProperties": false
             }
         },
-        "__schema128": {
+        "__schema129": {
             "type": "object",
             "propertyNames": {
                 "$ref": "#/definitions/__schema3"

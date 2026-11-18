@@ -417,3 +417,44 @@ describe('slot tag effects and slot option categories', () => {
         assert.deepEqual(await gameIssues(() => {}), []);
     });
 });
+
+describe("a slot option's slot effect count", () => {
+    type Loose = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+
+    async function countIssues(count: unknown) {
+        const all = await files();
+        const game = all.find((f) => f.kind === 'GameSystem')!.data as Loose;
+        game.slotOptions['extra-support'].effects[0].count = count;
+        return checkShapes(all).map((i) => `${i.path}: ${i.message}`);
+    }
+
+    it('takes a whole number of 1 or more', async () => {
+        assert.deepEqual(await countIssues(3), []);
+        assert.deepEqual(await countIssues(1), []);
+    });
+
+    for (const bad of [0, 1.5]) {
+        it(`rejects ${bad}`, async () => {
+            const issues = await countIssues(bad);
+            assert.equal(issues.length, 1, issues.join('\n'));
+            assert.ok(
+                issues[0].startsWith(
+                    'slotOptions/extra-support/effects/0/count: '
+                ) && issues[0].includes('a whole number, 1 or more'),
+                issues[0]
+            );
+        });
+    }
+
+    it("isn't taken on a group's slot", async () => {
+        const all = await files();
+        const game = all.find((f) => f.kind === 'GameSystem')!.data as Loose;
+        game.groups['heavy-detachment'].slots[0].count = 2;
+        assert.deepEqual(
+            checkShapes(all).map((i) => `${i.path}: ${i.message}`),
+            [
+                "groups/heavy-detachment/slots/0/count: unknown property 'count' (misspelt, or a field from a newer validator release)",
+            ]
+        );
+    });
+});
