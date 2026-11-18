@@ -321,6 +321,78 @@ describe('weapon profile templates', () => {
     });
 });
 
+describe('equipment with a weapon profile', () => {
+    const grenades = (set: GameDataSet) =>
+        set.factions[0].data.equipment['grenades'];
+
+    it("checks the profiles as a weapon's", async () => {
+        const issues = await issuesAfter((set) => {
+            const weapon = grenades(set).weapon!;
+            weapon.profiles[0].stats = { range: '6"', attacks: '1' };
+            weapon.profiles[0].specialRules = [{ id: 'armourd' }];
+            weapon.profiles.push(
+                {
+                    name: 'Redundant',
+                    template: 'ranged',
+                    stats: weapon.profiles[0].stats,
+                },
+                { name: 'Unknown', template: 'mele', stats: {} }
+            );
+        });
+        assert.deepEqual(issues, [
+            'error factions/field-army.json equipment/grenades/weapon/profiles/0: missing stats: damage',
+            "warning factions/field-army.json equipment/grenades/weapon/profiles/1: the profile's template is the weapon's 'ranged' already; leave it out",
+            'error factions/field-army.json equipment/grenades/weapon/profiles/1: missing stats: damage',
+            "error factions/field-army.json equipment/grenades/weapon/profiles/2: unknown weapon template 'mele'",
+            "error factions/field-army.json equipment/grenades/weapon/profiles/0: unknown special rule 'armourd'",
+        ]);
+    });
+
+    it('reports an unknown template and warns on no profiles', async () => {
+        const issues = await issuesAfter((set) => {
+            grenades(set).weapon = { template: 'thrown', profiles: [] };
+        });
+        assert.deepEqual(issues, [
+            "error factions/field-army.json equipment/grenades/weapon: unknown weapon template 'thrown'",
+            'warning factions/field-army.json equipment/grenades/weapon: has no profiles',
+        ]);
+    });
+
+    it('is not a weapon the unit holds', async () => {
+        const issues = await issuesAfter((set) => {
+            set.factions[0].data.units['squad'].defaultGear!.push({
+                kind: 'weapon',
+                id: 'grenades',
+            });
+        });
+        assert.deepEqual(issues, [
+            "error factions/field-army.json units/squad/defaultGear: unknown weapon 'grenades'",
+        ]);
+    });
+
+    it('warns about a weapon with the same id', async () => {
+        const issues = await issuesAfter((set) => {
+            const data = set.factions[0].data;
+            data.weapons['grenades'] = {
+                id: 'grenades',
+                name: 'Grenades',
+                template: 'ranged',
+                profiles: grenades(set).weapon!.profiles,
+            };
+            sub(set, 'veterans').equipment!['rifle'] = {
+                id: 'rifle',
+                name: 'Rifle drill',
+                text: 'Fires a rifle.',
+                weapon: data.weapons['rifle'],
+            };
+        });
+        assert.deepEqual(issues, [
+            "warning factions/field-army.json equipment/grenades/weapon: there is also a weapon 'grenades', held and counted apart from this profile; if it is the same attack, remove the weapon and give units the equipment instead",
+            "warning sub-factions/veterans.json equipment/rifle/weapon: there is also a weapon 'rifle', held and counted apart from this profile; if it is the same attack, remove the weapon and give units the equipment instead",
+        ]);
+    });
+});
+
 describe('traits', () => {
     it('checks trait effects, with no profile scope in their conditions', async () => {
         const issues = await issuesAfter((set) => {

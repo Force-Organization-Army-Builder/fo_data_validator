@@ -63,6 +63,7 @@ export type CompositionBlock = Infer<typeof S.CompositionBlockSchema>;
 export type UnitProfile = Infer<typeof S.UnitProfileSchema>;
 export type Weapon = Infer<typeof S.WeaponSchema>;
 export type WeaponProfile = Infer<typeof S.WeaponProfileSchema>;
+export type EquipmentWeapon = Infer<typeof S.EquipmentWeaponSchema>;
 export type Equipment = Infer<typeof S.EquipmentSchema>;
 export type SpecialRule = Infer<typeof S.SpecialRuleSchema>;
 export type SpecialRuleSelection = Infer<typeof S.SpecialRuleSelectionSchema>;

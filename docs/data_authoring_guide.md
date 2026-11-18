@@ -205,7 +205,29 @@ Required: `id`, `version`, `name`, `game: { "id", "versions" }` and all of `unit
 ### Weapons, equipment, special rules
 
 - `weapons`: `{ id, name, template, profiles: [{ name, template?, stats, traits?, specialRules? }] }`, `template` a weapon stat template of the game. A profile's own `template` (validator 1.11.0) replaces the weapon's for that profile, for a weapon with a shooting and a close-combat profile: a spear with `"template": "ranged"` whose `Spear (Melee)` profile has `"template": "melee"` and the melee stats. Keep it one weapon rather than two records, so gear refs, swaps and counts treat it as one item (`spear` in `examples/full`).
-- `equipment`: `{ id, name, text }`.
+- `equipment`: `{ id, name, text, weapon? }`.
+- **Equipment with a weapon profile** (validator 2.3.0): `weapon: { template, profiles: [...] }` on an equipment record gives it an attack its holder may use, with the same `template` and `profiles` as a weapon. Use it for gear whose rules only *allow* an attack in some situation, such as grenades thrown instead of shooting, a demolition charge or a bomb, so that the item stays equipment and `text` says when the profile may be used:
+
+    ```json
+    "grenades": {
+        "id": "grenades",
+        "name": "Grenades",
+        "text": "Once per game, instead of shooting, one model with grenades may throw one using this profile.",
+        "weapon": {
+            "template": "ranged",
+            "profiles": [
+                { "name": "Grenade (thrown)", "stats": { "range": "6\"", "attacks": "1", "damage": "1" },
+                  "specialRules": [{ "id": "armoured", "value": "1" }] }
+            ]
+        }
+    }
+    ```
+
+    - The item is equipment and nothing else: units get it with `{ "kind": "equipment", "id": "grenades" }` in `defaultGear` and `equipmentRefs` in options, and restrictions, `limitBy`, swaps, `equipment:grenades` and `count` / `has` all see the equipment. The profile is not a weapon the unit holds, so `weapon:` references, weapon restrictions and weapon swaps never match it.
+    - The app shows the profile with the equipment, laid out like a weapon of that template.
+    - The profiles are checked as a weapon's are: the template and any profile's own `template` must be the game's, `stats` must match the template, and special rules must exist. An empty `profiles` is a warning.
+    - Don't also keep a weapon record for the same attack. A weapon with the same id as the equipment is a warning: the weapon is held and counted on its own, so a unit given both would show the attack twice. When moving a profile from a weapon onto equipment, delete the weapon and change its gear refs to `"kind": "equipment"`.
+    - See `grenades` in `examples/full`.
 - `specialRules`: `{ id, name, text, configurable?, defaultValue?, grants?, slots? }`. Units and profiles use them as `{ "id", "value"? }` in `specialRules`. A `value` given to a rule that isn't `configurable` is a warning. `grants` gives contingent resources and may use `rule.value()`. `slots` are slots each unit with the rule adds to its group (see [Slots filled from another faction](#slots-filled-from-another-faction)).
 
 ### Upgrades and options

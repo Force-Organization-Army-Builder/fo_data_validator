@@ -395,6 +395,23 @@ describe('slot tag effects and slot option categories', () => {
             );
     });
 
+    it("checks an equipment's weapon profile", async () => {
+        const all = await files();
+        const faction = all.find((f) => f.kind === 'Faction')!;
+        const { equipment } = faction.data as {
+            equipment: Record<string, { weapon?: Record<string, unknown> }>;
+        };
+        equipment['grenades'].weapon!.range = '6"';
+        delete equipment['grenades'].weapon!.template;
+        assert.deepEqual(
+            checkShapes(all).map((i) => `${i.path}: ${i.message}`),
+            [
+                "equipment/grenades/weapon: missing required property 'template'",
+                "equipment/grenades/weapon/range: unknown property 'range' (misspelt, or a field from a newer validator release)",
+            ]
+        );
+    });
+
     it('takes a slotTag effect in a sub-faction unit modifier', async () => {
         // the example's veterans carry one
         assert.deepEqual(await gameIssues(() => {}), []);

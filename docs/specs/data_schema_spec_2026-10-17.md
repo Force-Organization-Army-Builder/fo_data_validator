@@ -241,6 +241,25 @@ A contingent may take **several sub-factions of its faction**: one pick per inde
 - **Combining sub-factions.** Sub-factions that can be taken together are merged into the parent in one go: two in different groups, or two in one group whose `max` is an expression or more than 1. Such sub-factions must not define a record (same kind and id) or a unit modifier (same id) **differently**; identical copies are fine and are merged as one. Two of them overriding the same parent record is the same error unless their replacements are identical: there is no "last group wins". Sub-factions that can't be taken together (two in a group of at most one) may reuse ids freely. Each sub-faction is still checked against its parent alone, and collisions with the parent's records stay governed by `overrides`.
 - **Saved lists** (the Force Org app, a separate repository). A contingent holds its picks as a list of sub-faction ids (`subFactions: string[]`, in the order picked) rather than one `subFaction`; the app checks each group's `min` / `max` and each pick's `when`, and merges the picks into the parent in group order (the order of `subFactionGroups`, `default` first). Data using `group` or `subFactionGroups` needs validator 1.1.0 or later and an app version that supports several sub-factions.
 
+### 4.2 Equipment with a weapon profile
+
+An equipment record is `{ id, name, description?, text, weapon? }`. **`weapon`** (validator 2.3.0) is `{ template, profiles }`, with the same meaning and checks as on a weapon record (§3.6): a weapon template of the game, and profiles `{ name, template?, stats, traits?, specialRules? }`. It is for gear whose rules let its holder make an attack only in some situation (a grenade thrown instead of shooting, a demolition charge): the record stays equipment, `text` says when the attack may be made, and the profile is structured data the app shows with the equipment.
+
+```json
+"grenades": {
+    "id": "grenades",
+    "name": "Grenades",
+    "text": "Once per game, instead of shooting, one model with grenades may throw one using this profile.",
+    "weapon": {
+        "template": "ranged",
+        "profiles": [{ "name": "Grenade (thrown)", "stats": { "range": "6\"", "attacks": "1", "damage": "1" } }]
+    }
+}
+```
+
+- **Holding.** Only the equipment is held. `defaultGear`, `equipmentRefs`, swaps, restrictions, `limitBy` and `equipment:` / `count` / `has` treat it like any equipment. The profile is not a weapon of the unit: it has no weapon id, and no `weapon:` reference, weapon restriction, `limitBy` or swap can match it.
+- **Checks.** As for a weapon's profiles: an unknown template is an error, a profile's own `template` equal to the `weapon`'s a warning, missing or extra stats and unknown special rules errors. Warnings: `profiles` empty; a weapon with the same id as the equipment in the same scope (the faction, with its parent merged in for a sub-faction), usually one left behind when its profile was moved onto the equipment, which a unit holding both would show twice.
+
 ## 5. Units and profiles
 
 ```json

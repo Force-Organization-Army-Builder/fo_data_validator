@@ -21,6 +21,7 @@ import type {
     AddedSlot,
     Condition,
     Group,
+    EquipmentWeapon,
     Faction,
     FactionRecords,
     GameSystem,
@@ -899,40 +900,21 @@ class Validator {
 
     /* checks the records a faction or sub-faction defines, resolving against `scope` */
     private records(r: Partial<FactionRecords>, scope: Scope) {
-        const { game } = scope;
-        for (const weapon of Object.values(r.weapons ?? {})) {
-            if (!game.stats.weapon[weapon.template])
+        for (const weapon of Object.values(r.weapons ?? {}))
+            this.weaponProfiles(`weapons/${weapon.id}`, weapon, scope);
+        for (const equipment of Object.values(r.equipment ?? {})) {
+            if (!equipment.weapon) continue;
+            const at = `equipment/${equipment.id}/weapon`;
+            this.weaponProfiles(at, equipment.weapon, scope);
+            if (!equipment.weapon.profiles.length)
+                this.report(at, 'has no profiles', 'warning');
+            // usually a weapon record left behind when its profile moved here
+            if (scope.records.weapons?.[equipment.id])
                 this.report(
-                    `weapons/${weapon.id}`,
-                    `unknown weapon template '${weapon.template}'`
-                );
-            weapon.profiles.forEach((p, i) => {
-                // a profile's own template (validator 1.11.0) wins over the weapon's
-                const at = `weapons/${weapon.id}/profiles/${i}`;
-                const id = p.template ?? weapon.template;
-                const template = game.stats.weapon[id];
-                if (!template) {
-                    if (p.template)
-                        this.report(at, `unknown weapon template '${id}'`);
-                    return;
-                }
-                if (p.template === weapon.template)
-                    this.report(
-                        at,
-                        `the profile's template is the weapon's '${weapon.template}' already; leave it out`,
-                        'warning'
-                    );
-                this.stats(
                     at,
-                    p.stats,
-                    template.stats.map((s) => s.id)
+                    `there is also a weapon '${equipment.id}', held and counted apart from this profile; if it is the same attack, remove the weapon and give units the equipment instead`,
+                    'warning'
                 );
-            });
-            weapon.profiles.forEach((p, i) =>
-                p.specialRules?.forEach((s) =>
-                    this.rule(`weapons/${weapon.id}/profiles/${i}`, s, scope)
-                )
-            );
         }
         for (const upgrade of Object.values(r.upgrades ?? {}))
             this.upgrade(
@@ -949,6 +931,44 @@ class Validator {
         for (const selector of Object.values(r.selectors ?? {}))
             this.selector(`selectors/${selector.id}`, selector.match, scope);
         this.subChoices(r.subChoices, scope);
+    }
+
+    /* a weapon's profiles, or the profiles an equipment's `weapon` gives (validator 2.3.0) */
+    private weaponProfiles(
+        path: string,
+        weapon: EquipmentWeapon,
+        scope: Scope
+    ) {
+        const { game } = scope;
+        if (!game.stats.weapon[weapon.template])
+            this.report(path, `unknown weapon template '${weapon.template}'`);
+        weapon.profiles.forEach((p, i) => {
+            // a profile's own template (validator 1.11.0) wins over the weapon's
+            const at = `${path}/profiles/${i}`;
+            const id = p.template ?? weapon.template;
+            const template = game.stats.weapon[id];
+            if (!template) {
+                if (p.template)
+                    this.report(at, `unknown weapon template '${id}'`);
+                return;
+            }
+            if (p.template === weapon.template)
+                this.report(
+                    at,
+                    `the profile's template is the weapon's '${weapon.template}' already; leave it out`,
+                    'warning'
+                );
+            this.stats(
+                at,
+                p.stats,
+                template.stats.map((s) => s.id)
+            );
+        });
+        weapon.profiles.forEach((p, i) =>
+            p.specialRules?.forEach((s) =>
+                this.rule(`${path}/profiles/${i}`, s, scope)
+            )
+        );
     }
 
     private stats(
