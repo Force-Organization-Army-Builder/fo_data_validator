@@ -2349,6 +2349,18 @@ class Validator {
                     FIELD_SCOPES.slot,
                     'slotOption'
                 );
+            // a slot option adds at most one slot effect: the app reads only the
+            // first, so more is a warning (not an error, so data written with
+            // repeated effects before `count` keeps loading)
+            const slotEffects =
+                option.effects?.filter((effect) => effect.kind === 'slot')
+                    .length ?? 0;
+            if (slotEffects > 1)
+                this.report(
+                    `${at}/effects`,
+                    `has ${slotEffects} slot effects; only the first is used. To add several slots, use one slot effect with \`count\`, e.g. \`{ "kind": "slot", "roleChoices": [...], "count": ${slotEffects} }\``,
+                    'warning'
+                );
             option.effects?.forEach((effect, i) => {
                 const e = `${at}/effects/${i}`;
                 if (effect.kind === 'slot') this.addedSlot(e, effect, scope);

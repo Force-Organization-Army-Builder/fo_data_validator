@@ -169,6 +169,8 @@ Data that uses a `slotTag` effect, a slot option's `category` or a slot's `tagOp
 
 Data that uses `weapon` on an equipment record needs validator **2.3.0** or later, and an app that supports it.
 
+Data that uses `count` on a slot option's `slot` effect needs validator **2.4.0** or later, and an app that supports it.
+
 Data that declares `minValidatorVersion` needs validator **1.14.0** or later. From 1.14.0 every id, record key and `@selector` reference must be lowercase kebab-case.
 
 ## Releasing

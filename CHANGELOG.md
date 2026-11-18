@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.4.0
+
+- **A count on a slot option's `slot` effect.** `{ "kind": "slot", "roleChoices": ["support"], "count": 3 }` adds three slots to the group, each holding its own unit, for a rule such as "add three Support slots". `count` is a whole number of 1 or more and defaults to 1. With several `roleChoices` the player picks one role, which all of the slots take. Only the slot option's `slot` effect takes it: group slots and a special rule's `slots` (already a list) are unchanged.
+- **New warning.** A slot option with more than one `slot` effect: only the first is used, so the message suggests one effect with `count`. The authoring guide already said a slot option has at most one; it is a warning, not an error, so published data written with repeated effects keeps loading. `count` that is 0 or a fraction is a shape error.
+- The authoring guide, the data schema spec (§7.1) and the README say so.
+- **For the app:** add `count` slots (default 1) for a slot option's `slot` effect. When it has several `roleChoices`, ask for the role once and give it to every slot. `SlotEffect` gains `count`.
+- `schemaVersion` stays 1 and `expressionVersion` stays 1; everything is additive. Data using `count` should set `"minValidatorVersion": "2.4.0"` in its manifest, and needs an app that supports it.
+
 ## 2.3.0
 
 - **Equipment with a weapon profile.** An equipment record may carry `weapon: { "template", "profiles": [...] }`, with the same `template` and profiles (`name`, `template?`, `stats`, `traits?`, `specialRules?`) as a weapon. It is for gear whose rules only let its holder make an attack in some situation, such as grenades thrown instead of shooting: the item stays equipment, its `text` says when the attack may be made, and the profile is structured weapon data rather than prose. `"grenades": { "id": "grenades", "name": "Grenades", "text": "Once per game, instead of shooting, …", "weapon": { "template": "ranged", "profiles": [{ "name": "Grenade (thrown)", "stats": { "range": "6\"", "attacks": "1", "damage": "1" } }] } }`.

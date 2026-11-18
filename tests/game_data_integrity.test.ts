@@ -732,6 +732,30 @@ describe('slot option units', () => {
     });
 });
 
+describe("a slot option's slot effects", () => {
+    const extraSupport = (set: GameDataSet) =>
+        set.game.data.slotOptions!['extra-support'];
+
+    it('warns about more than one, suggesting count', async () => {
+        const issues = await issuesAfter((set) => {
+            const effects = extraSupport(set).effects!;
+            effects.push({ kind: 'slot', roleChoices: ['support'] });
+        });
+        assert.deepEqual(issues, [
+            'warning game.json slotOptions/extra-support/effects: has 2 slot effects; only the first is used. To add several slots, use one slot effect with `count`, e.g. `{ "kind": "slot", "roleChoices": [...], "count": 2 }`',
+        ]);
+    });
+
+    it('takes one with a count', async () => {
+        const issues = await issuesAfter((set) => {
+            extraSupport(set).effects = [
+                { kind: 'slot', roleChoices: ['support'], count: 3 },
+            ];
+        });
+        assert.deepEqual(issues, []);
+    });
+});
+
 describe('faction and sub-faction list rules', () => {
     const rules = (set: GameDataSet) => set.factions[0].data.listRules!;
 
