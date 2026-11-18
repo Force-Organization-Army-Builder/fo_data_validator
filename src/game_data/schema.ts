@@ -974,19 +974,30 @@ export const WeaponProfileSchema = z.strictObject({
     specialRules: z.array(SpecialRuleSelectionSchema).optional(),
 });
 
-export const WeaponSchema = z.strictObject({
-    ...named,
-    id: SlugSchema,
+const weaponProfiles = {
     template: SlugSchema.describe(
         'a weapon stat template id from the game, e.g. `ranged` / `melee`: the template of every profile without its own `template`'
     ),
     profiles: z.array(WeaponProfileSchema),
+};
+
+export const WeaponSchema = z.strictObject({
+    ...named,
+    id: SlugSchema,
+    ...weaponProfiles,
 });
+
+export const EquipmentWeaponSchema = z
+    .strictObject(weaponProfiles)
+    .describe(
+        "weapon profiles the equipment lets its holder use, e.g. a grenade's thrown attack (validator 2.3.0). Shown as part of the equipment, checked like a weapon's profiles; not a weapon the unit holds, so `weapon:` references, restrictions, `limitBy` and swaps never see it (they see the equipment)"
+    );
 
 export const EquipmentSchema = z.strictObject({
     ...named,
     id: SlugSchema,
     text: z.string(),
+    weapon: EquipmentWeaponSchema.optional(),
 });
 
 /* Groups (formations, retinues, teams) */

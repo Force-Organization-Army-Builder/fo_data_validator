@@ -782,7 +782,17 @@
         "grenades": {
             "id": "grenades",
             "name": "Grenades",
-            "text": "May be thrown once per game."
+            "text": "Once per game, instead of shooting, one model with grenades may throw one using this profile.",
+            "weapon": {
+                "template": "ranged",
+                "profiles": [
+                    {
+                        "name": "Grenade (thrown)",
+                        "stats": { "range": "6\"", "attacks": "1", "damage": "1" },
+                        "specialRules": [{ "id": "armoured", "value": "1" }]
+                    }
+                ]
+            }
         },
         "rations": {
             "id": "rations",
