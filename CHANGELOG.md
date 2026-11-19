@@ -1,5 +1,21 @@
 # Changelog
 
+## 2.7.0
+
+- **Effects a group gives units outside it.** A group's `listEffects` is a list of `{ "units"?, "scope"?, "effects" }`. While the group is in the list, each entry's effects apply to every matching unit in reach. Example: `"listEffects": [{ "units": "@vehicles", "effects": [{ "kind": "specialRule", "rule": { "id": "fearless" } }] }]` for "every Walker in a list with this group gains Fearless".
+    - **Reach:** `scope: "list"` (the default) reaches every unit in the list, allies included; `"contingent"` reaches the group's contingent.
+    - **Effects:** stat, special-rule, trait and slot-tag, as on a list choice value. They apply right after list choice values and before options, and `units` sees each unit with its own traits and sub-faction modifiers.
+    - **Why:** it replaces copying a unit modifier into every sub-faction because the rule's group lives in one faction and the affected units anywhere.
+- **Checks.** The effects and selector are checked as a choice value's are, except that `unitIds` may name any loaded faction's units. An entry with no effects is a warning. Traits that `listEffects` give count as traits in use for `trait:` references and selectors.
+- `examples/full`'s `armoured-spearhead` makes every vehicle in the list Fearless, and the source declares `"minValidatorVersion": "2.7.0"`. The authoring guide (Groups, Effects order), the data schema spec (§5.2, §7) and the README say so.
+- **For the app:**
+    - For each group in the list with `listEffects`, apply each entry's effects to every matching unit in reach (the whole list, or the group's contingent), at the step after list choice values.
+    - Match `units` against the unit with its own traits and sub-faction modifiers, and evaluate each effect's `when` in the unit's own scopes.
+    - Resolve rule ids in the group's faction.
+    - Include them where list choice effects are included today: the played unit, `staticUnit` counts, and candidates offered for a slot.
+    - `Group` gains `listEffects`; `GroupListEffectsSchema` and the `GroupListEffects` type are new exports.
+- `schemaVersion` stays 1 and `expressionVersion` stays 1; everything is additive. Data using `listEffects` should set `"minValidatorVersion": "2.7.0"` in its manifest, and needs an app that supports it.
+
 ## 2.6.0
 
 - **A condition on the unit filling a slot.** A slot's `unitWhen` (`{ "if", "message" }`) is checked live against the unit in it, as configured: its options' gear and traits are included, seen before the group's effects. While false, it is an issue on the slot. It is for "units of a second role may fill this slot, but only with some gear or upgrade": `{ "roles": ["officer", "heavy"], "unitWhen": { "if": "unit.is(role:officer) or unit.has(weapon:cannon)", "message": "…" } }`. Units are still offered by role and `units`: the app judges a unit offered for an empty slot on its own records plus list choice values, before any upgrade is picked. A selector on an upgrade-given trait therefore never offers the unit, which `unitWhen` avoids. Scopes: `unit`, `slot`, `group`, `contingent`, `root`, `main`, `list`.

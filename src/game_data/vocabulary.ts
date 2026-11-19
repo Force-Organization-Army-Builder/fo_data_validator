@@ -108,6 +108,7 @@ function traitsOf(sources: Array<TraitSource>) {
             fromOptions(upgrade.options);
         for (const d of Object.values(s.groups ?? {})) {
             d.effects?.forEach(fromEffect);
+            d.listEffects?.forEach((e) => e.effects.forEach(fromEffect));
             for (const slot of d.slots) slot.effects?.forEach(fromEffect);
         }
         for (const o of Object.values(s.slotOptions ?? {})) {

@@ -2253,7 +2253,42 @@ class Validator {
                 )
             );
             this.addedSlotRoles(at, group.addedSlotRoles, scope);
+            this.listEffects(at, group.listEffects, scope);
         }
+    }
+
+    /*
+     * A group's `listEffects` (validator 2.7.0) reach units outside it, from
+     * any loaded faction, so `unitIds` may name any of them
+     */
+    private listEffects(
+        path: string,
+        entries: Group['listEffects'],
+        scope: Scope
+    ) {
+        if (!entries) return;
+        const { factions, subFactions } = this.set;
+        const units = [...factions, ...subFactions].flatMap((f) =>
+            keys(f.data.units)
+        );
+        entries.forEach((entry, i) => {
+            const at = `${path}/listEffects/${i}`;
+            this.selector(`${at}/units`, entry.units, scope, units);
+            if (!entry.effects.length)
+                this.report(
+                    `${at}/effects`,
+                    'a listEffects entry with no effects does nothing',
+                    'warning'
+                );
+            entry.effects.forEach((effect, j) =>
+                this.effect(
+                    `${at}/effects/${j}`,
+                    effect,
+                    scope,
+                    FIELD_SCOPES.effect
+                )
+            );
+        });
     }
 
     /*

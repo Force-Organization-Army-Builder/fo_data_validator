@@ -97,6 +97,7 @@ export type TraitEffect = Infer<typeof S.TraitEffectSchema>;
 export type SlotTagEffect = Infer<typeof S.SlotTagEffectSchema>;
 
 export type Group = Infer<typeof S.GroupSchema>;
+export type GroupListEffects = Infer<typeof S.GroupListEffectsSchema>;
 export type GroupEffect = Infer<typeof S.GroupEffectSchema>;
 export type Slot = Infer<typeof S.SlotSchema>;
 export type SlotSource = Infer<typeof S.SlotSourceSchema>;

@@ -893,7 +893,9 @@
         "armoured-spearhead": {
             "id": "armoured-spearhead",
             "name": "Armoured Spearhead",
+            "description": "While it is in the list, every vehicle in the list is Fearless.",
             "type": "reserve",
+            "listEffects": [{ "units": "@vehicles", "effects": [{ "kind": "specialRule", "rule": { "id": "fearless" } }] }],
             "slots": [
                 { "roles": ["transport"], "repeat": { "max": 3 } },
                 {

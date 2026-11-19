@@ -2162,3 +2162,74 @@ describe('slot unitWhen, group addedSlotRoles and slot option when', () => {
         ]);
     });
 });
+
+describe('group listEffects', () => {
+    const fieldArmy = (set: GameDataSet) =>
+        set.factions.find((f) => f.data.id === 'field-army')!.data;
+    const spearhead = (set: GameDataSet) =>
+        fieldArmy(set).groups['armoured-spearhead'];
+
+    it('has one in the full example', async () => {
+        const [set] = await sets(path.join(examples, 'full'));
+        assert.deepEqual(spearhead(set).listEffects?.[0].units, '@vehicles');
+    });
+
+    it("takes the contingent scope, another faction's units and effects with a when", async () => {
+        const issues = await issuesAfter((set) => {
+            spearhead(set).listEffects = [
+                {
+                    scope: 'contingent',
+                    units: { unitIds: ['walker', 'battle-construct'] },
+                    effects: [
+                        {
+                            kind: 'stat',
+                            changes: [{ stat: 'morale', op: 'add', value: 1 }],
+                            when: {
+                                if: 'unit.is(role:heavy) and group.is(type:core)',
+                                message: 'Heavy units in a core formation',
+                            },
+                        },
+                        { kind: 'slotTag', add: ['prime'] },
+                    ],
+                },
+            ];
+        });
+        assert.deepEqual(issues, []);
+    });
+
+    it('reports unknown units and rules, and warns about an entry that does nothing', async () => {
+        const issues = await issuesAfter((set) => {
+            spearhead(set).listEffects = [
+                {
+                    units: { unitIds: ['walkr'] },
+                    effects: [
+                        { kind: 'specialRule', rule: { id: 'fearles' } },
+                    ],
+                },
+                { units: '@vehicles', effects: [] },
+            ];
+        });
+        assert.deepEqual(issues, [
+            "error factions/field-army.json groups/armoured-spearhead/listEffects/0/units: unknown unit 'walkr'",
+            "error factions/field-army.json groups/armoured-spearhead/listEffects/0/effects/0: unknown special rule 'fearles'",
+            'warning factions/field-army.json groups/armoured-spearhead/listEffects/1/effects: a listEffects entry with no effects does nothing',
+        ]);
+    });
+
+    it('counts the traits it gives as traits in use', async () => {
+        const withTrait = (give: boolean) =>
+            issuesAfter((set) => {
+                delete set.game.data.traits;
+                spearhead(set).listEffects = give
+                    ? [{ effects: [{ kind: 'trait', add: ['Column Drill'] }] }]
+                    : undefined;
+                fieldArmy(set).groups['gun-line'].units = {
+                    traits: ['Column Drill'],
+                };
+            });
+        assert.deepEqual(await withTrait(true), []);
+        assert.deepEqual(await withTrait(false), [
+            "warning factions/field-army.json groups/gun-line: no unit has or is given the trait 'Column Drill'",
+        ]);
+    });
+});
