@@ -394,7 +394,7 @@ For rules such as "while this sub-faction is taken, units in an Elite formation 
 - Allowed in sub-faction unit modifier `actions`, upgrade option `effects`, group `effects`, slot `effects` (a slot a special rule or slot option adds included) and list choice value `effects`. **Not** in a slot option's `effects`: slot options are applied last, so a tag one added could never offer anything (a shape error says so).
 - Its `when` should not read `slot.is(tag:…)` of a tag it adds itself.
 
-Effects appear on `Option.effects`, slot options, sub-faction unit modifiers, groups (`effects`) and list choice values (`effects`). `when` on an effect holds it back until true. The app applies them in this order: the unit's own traits, sub-faction unit modifiers, list choice values, options, the group, the slot's own `effects`, slot options. Each step's `when` sees the result of the earlier steps. Slot tags that slot-tag effects add are in place before slot options are offered, so a slot option's `units`, the options a slot offers and `slot.is(tag:…)` all see them.
+Effects appear on `Option.effects`, slot options, sub-faction unit modifiers, groups (`effects`, and `listEffects` for units outside the group) and list choice values (`effects`). `when` on an effect holds it back until true. The app applies them in this order: the unit's own traits, sub-faction unit modifiers, list choice values, other groups' `listEffects` (validator ≥2.7.0), options, the group, the slot's own `effects`, slot options. Each step's `when` sees the result of the earlier steps. Slot tags that slot-tag effects add are in place before slot options are offered, so a slot option's `units`, the options a slot offers and `slot.is(tag:…)` all see them.
 
 **List choice values** (validator ≥1.13.0) give effects to every unit in the list while the value is picked, for rules such as "in a Defensive list, every unit has the Dug In trait":
 
@@ -461,6 +461,19 @@ Effects appear on `Option.effects`, slot options, sub-faction unit modifiers, gr
     - Roles must be game roles. A role no slot option in any loaded file can add is a warning.
 
   `examples/full`'s `standard-core` allows only Support.
+- `listEffects` (validator ≥2.7.0) gives effects to units **outside** the group while it is in the list, for rules such as "every Walker in a list with this group gains Fearless":
+
+  ```json
+  "listEffects": [{ "units": "@vehicles", "effects": [{ "kind": "specialRule", "rule": { "id": "fearless" } }] }]
+  ```
+
+    - Each entry has `effects` (stat, special-rule, trait and slot-tag effects, as on a list choice value), an optional `units` selector, and an optional `scope`.
+    - `scope: "list"` (the default) reaches every unit in the list, in every contingent, allies included. `"contingent"` reaches only the group's own contingent. The group's own units are reached too, if they match.
+    - They apply right after list choice values, before options and groups' own `effects`. A group's `units` or an option's `when` can therefore read what they give.
+    - `units` sees each unit with its own traits and sub-faction modifiers. Because it can reach any faction, its `unitIds` may name any loaded faction's units.
+    - An effect's `when` sees the unit's own slot and group, not the group giving the effect; use `main.count(group:…)` and the like for conditions about the list.
+    - Rule ids resolve where the group is defined, as for a slot's `effects`.
+    - It replaces copying a unit modifier into every sub-faction. `examples/full`'s `armoured-spearhead` makes every vehicle in the list Fearless.
 
 ### Slots filled from another faction
 

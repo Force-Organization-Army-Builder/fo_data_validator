@@ -1098,6 +1098,29 @@ export const GroupEffectSchema = heldEffect().describe(
     'applied to every unit in the group, including units in slots added later'
 );
 
+export const GroupListEffectsSchema = z
+    .strictObject({
+        units: UnitSelectorOrRefSchema.optional().describe(
+            'the units `effects` apply to, seen with their own traits and sub-faction modifiers; left out = every unit in reach'
+        ),
+        scope: z
+            .enum(['list', 'contingent'])
+            .optional()
+            .describe(
+                "which units are in reach: `list` (the default) = every unit in the list, in every contingent, allies included; `contingent` = the units in the group's contingent"
+            ),
+        effects: z
+            .array(
+                heldEffect().describe(
+                    "applied to every matching unit in reach while the group is in the list, right after list choice values; an effect's `when` sees the unit's own slot and group, not this group's"
+                )
+            )
+            .describe('stat, special-rule, trait and slot-tag effects'),
+    })
+    .describe(
+        '(validator 2.7.0) Effects a group gives units outside it, e.g. "every Walker in a list with this group gains Fearless"'
+    );
+
 export const GroupSchema = z.strictObject({
     ...named,
     id: SlugSchema,
@@ -1133,6 +1156,12 @@ export const GroupSchema = z.strictObject({
         .optional()
         .describe(
             '(validator 2.6.0) the only roles the `slot` effects of slot options picked in this group\'s slots may add: each effect\'s `roleChoices` is narrowed to them, and an option left with none isn\'t offered. `[]` = no option that adds a slot; left out, no limit'
+        ),
+    listEffects: z
+        .array(GroupListEffectsSchema)
+        .optional()
+        .describe(
+            '(validator 2.7.0) while the group is in the list, each entry\'s `effects` apply to the matching units in reach, wherever they are, e.g. `[{ "units": "@vehicles", "effects": [{ "kind": "specialRule", "rule": { "id": "fearless" } }] }]`'
         ),
 });
 

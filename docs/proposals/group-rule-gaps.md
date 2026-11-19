@@ -1,6 +1,6 @@
 # Review: group-rule gaps found while porting detachment rules
 
-Status: items **1 (`unitWhen`), 2d (`addedSlotRoles`) and 2c (slot option `when`) implemented in validator 2.6.0**, as recommended below (see `CHANGELOG.md`). The rest is still open. Written against validator 2.5.0 and the Force Org app as of 2026-11-19.
+Status: items **1 (`unitWhen`), 2d (`addedSlotRoles`) and 2c (slot option `when`) implemented in validator 2.6.0**, and **2a Option A (group `listEffects`) in 2.7.0**, as recommended below (see `CHANGELOG.md`). The rest is still open. Written against validator 2.5.0 and the Force Org app as of 2026-11-19.
 
 A data source added several primary groups (detachments). Their rules mostly fit the schema, but some needed workarounds: marker traits, whole-list expression rules, copied records and gear-count hacks. This review takes each gap and says whether it needs a schema change. Where it does, it gives design options with example JSON, a recommendation and a priority. The examples use `examples/full` vocabulary; the motivating rules are described generically.
 
