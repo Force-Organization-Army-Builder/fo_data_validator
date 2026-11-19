@@ -2199,6 +2199,7 @@ class Validator {
                     FIELD_SCOPES.slot,
                     scope.vocabulary
                 );
+                this.unitWhen(s, slot.unitWhen, scope);
                 if (slot.repeat) {
                     this.numberOrExpr(
                         `${s}/repeat/max`,
@@ -2251,6 +2252,76 @@ class Validator {
                     FIELD_SCOPES.effect
                 )
             );
+            this.addedSlotRoles(at, group.addedSlotRoles, scope);
+        }
+    }
+
+    /*
+     * A slot's `unitWhen` (validator 2.6.0): a condition on the unit filling
+     * it, so one that never reads `unit` can't judge the unit
+     */
+    private unitWhen(path: string, condition: Condition | undefined, scope: Scope) {
+        if (!condition) return;
+        const at = `${path}/unitWhen`;
+        if (!condition.message?.trim())
+            this.report(at, 'a condition needs a message for players');
+        const checked = this.expression(
+            at,
+            condition.if,
+            FIELD_SCOPES.unit,
+            'boolean',
+            scope.vocabulary
+        );
+        const scopes = checked.compiled
+            ? [...checked.compiled.scopes.values()]
+            : undefined;
+        if (scopes && !scopes.includes('unit'))
+            this.report(
+                at,
+                "doesn't read the unit, so it judges every unit the same; use the slot's `when` for whether the slot is available",
+                'warning'
+            );
+    }
+
+    /* Every role a slot option's slot effect may add, in the game and any loaded faction or sub-faction */
+    private addableRoles?: Set<string>;
+
+    /* A group's `addedSlotRoles` (validator 2.6.0): game roles some slot option can add */
+    private addedSlotRoles(
+        path: string,
+        roles: ReadonlyArray<string> | undefined,
+        scope: Scope
+    ) {
+        if (!roles) return;
+        const at = `${path}/addedSlotRoles`;
+        this.duplicates(at, roles, 'role');
+        if (!this.addableRoles) {
+            const { game, factions, subFactions } = this.set;
+            this.addableRoles = new Set(
+                [
+                    game.data.slotOptions,
+                    ...factions.map((f) => f.data.slotOptions),
+                    ...subFactions.map((f) => f.data.slotOptions),
+                ].flatMap((options) =>
+                    Object.values(options ?? {}).flatMap((option) =>
+                        (option.effects ?? []).flatMap((effect) =>
+                            effect.kind === 'slot' ? effect.roleChoices : []
+                        )
+                    )
+                )
+            );
+        }
+        for (const role of roles) {
+            if (!scope.game.roles[role]) {
+                this.known(at, 'role', role, keys(scope.game.roles));
+                continue;
+            }
+            if (!this.addableRoles.has(role))
+                this.report(
+                    at,
+                    `no slot option adds a '${role}' slot, so allowing it changes nothing`,
+                    'warning'
+                );
         }
     }
 
@@ -2435,6 +2506,12 @@ class Validator {
             );
             option.slotRoles?.forEach((r) => this.known(at, 'role', r, roles));
             this.selector(`${at}/units`, option.units, scope);
+            this.condition(
+                at,
+                option.when,
+                FIELD_SCOPES.unit,
+                scope.vocabulary
+            );
             if (option.cost)
                 this.costs(
                     `${at}/cost`,

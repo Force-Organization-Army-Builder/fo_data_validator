@@ -316,6 +316,7 @@
             "id": "standard-core",
             "name": "Standard Core Formation",
             "type": "core",
+            "addedSlotRoles": ["support"],
             "slots": [
                 { "roles": ["commander"], "required": true },
                 { "roles": ["officer"], "tags": ["prime"] },
@@ -460,6 +461,7 @@
             "text": "Support units may also fill this slot.",
             "slotTag": "prime",
             "slotRoles": ["troop"],
+            "when": { "if": "group.is(type:core)", "message": "Only in a core formation" },
             "effects": [{ "kind": "allowedRoles", "roles": ["support"] }]
         },
         "honoured-crew": {

@@ -1,5 +1,26 @@
 # Changelog
 
+## 2.6.0
+
+- **A condition on the unit filling a slot.** A slot's `unitWhen` (`{ "if", "message" }`) is checked live against the unit in it, as configured: its options' gear and traits are included, seen before the group's effects. While false, it is an issue on the slot. It is for "units of a second role may fill this slot, but only with some gear or upgrade": `{ "roles": ["officer", "heavy"], "unitWhen": { "if": "unit.is(role:officer) or unit.has(weapon:cannon)", "message": "…" } }`. Units are still offered by role and `units`: the app judges a unit offered for an empty slot on its own records plus list choice values, before any upgrade is picked. A selector on an upgrade-given trait therefore never offers the unit, which `unitWhen` avoids. Scopes: `unit`, `slot`, `group`, `contingent`, `root`, `main`, `list`.
+- **Limiting the slots that slot options add.** A group's `addedSlotRoles` narrows the `roleChoices` of the `slot` effects of slot options picked in its slots to the listed roles. An option left with none isn't offered, so `[]` means "options that add slots may not be taken" and `["support"]` means "they may only add Support slots". Options without a `slot` effect are unaffected, and options added later, in any file, are covered without marking each one.
+- **A condition on a slot option.** A slot option's `when` offers it only while true, seeing the unit as its `units` does (scopes as for `unitWhen`), e.g. `{ "if": "group.is(group:gun-line)", "message": "Only in a Gun Line" }`. A pick whose `when` turns false stays, with an issue.
+- **New checks.**
+    - Errors: a `unitWhen` or slot option `when` expression that fails, or uses `profile`; a missing message; an unknown role in `addedSlotRoles`.
+    - Warnings: a `unitWhen` that never reads `unit`; a role listed twice in `addedSlotRoles`; an `addedSlotRoles` role that no loaded slot option's `roleChoices` holds.
+- `examples/full`:
+    - The `garrison` group gains an Officer-or-Heavy slot whose `unitWhen` lets a Heavy unit in only with a cannon.
+    - `standard-core` allows only Support slots to be added.
+    - `flexible-troop` is offered only in core formations.
+    - It declares `"minValidatorVersion": "2.6.0"`.
+- **Docs.** The authoring guide (Groups, Slot options, the scope table), the data schema spec (§3.8, §7), the expression spec (§3, §8.2) and the README say so. The guide now also says what a slot's `units` sees when units are offered and once one is placed. `docs/proposals/group-rule-gaps.md` is the review these came from.
+- **For the app:**
+    - Evaluate a slot's `unitWhen` with the placed unit as the live `units` check sees it (`beforeGroup`), and report it on the slot.
+    - Narrow each picked or offered slot option's `slot` effect `roleChoices` by the group's `addedSlotRoles`. Don't offer an option left with none, and flag such a pick.
+    - Evaluate a slot option's `when` when offering it (with the unit before slot-option effects) and flag a pick whose `when` is false, alongside stranded options.
+    - `Slot` gains `unitWhen`, `Group` gains `addedSlotRoles` and `SlotOption` gains `when`.
+- `schemaVersion` stays 1 and `expressionVersion` stays 1; everything is additive. Data using these should set `"minValidatorVersion": "2.6.0"` in its manifest, and needs an app that supports them.
+
 ## 2.5.0
 
 - **Taking special rules away.** A `specialRule` effect may now `remove` rules, and `replace` them: `{ "kind": "specialRule", "remove": ["skirmisher"] }` and `{ "kind": "specialRule", "replace": { "from": ["skirmisher"], "to": { "id": "armoured", "value": "1" } } }`. They work like the trait effect's: `remove` takes every selection of those ids off the profiles the `profiles` filter picks (all of them when it is left out) and off the unit's own `specialRules`, whatever their value. `replace` takes any of `from` and gives `to` only where one was taken. So "models with X exchange it for Y" needs no filter: a model without X is untouched. `from` matches any value, and the same id in `from` and `to` re-values a rule. `rule` (the rule given) is now optional; an effect needs at least one of `rule`, `remove` and `replace`, and applies them in that order.

@@ -173,6 +173,8 @@ Data that uses `count` on a slot option's `slot` effect needs validator **2.4.0*
 
 Data that uses `remove` or `replace` on a special-rule effect, or `specialRules` in a selector, needs validator **2.5.0** or later, and an app that supports them.
 
+Data that uses a slot's `unitWhen`, a group's `addedSlotRoles` or a slot option's `when` needs validator **2.6.0** or later, and an app that supports them.
+
 Data that declares `minValidatorVersion` needs validator **1.14.0** or later. From 1.14.0 every id, record key and `@selector` reference must be lowercase kebab-case.
 
 ## Releasing

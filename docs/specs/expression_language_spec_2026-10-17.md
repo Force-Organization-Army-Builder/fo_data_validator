@@ -30,7 +30,8 @@ If a game's `terms` give them words, e.g. `core.` and `formation.`, those may be
 
 | Field | Found on | Result |
 | --- | --- | --- |
-| `when.if` | units, upgrades, options, groups, slots, stat and special-rule effects, expression list rules | bool |
+| `when.if` | units, upgrades, options, groups, slots, slot options (validator 2.6.0), stat and special-rule effects, expression list rules | bool |
+| `unitWhen.if` | slots (validator 2.6.0): a condition on the unit filling the slot | bool |
 | `min`, `max` | upgrades, options, groups, group types, count list rules, unit `limit.max`, slot `repeat.max`, composition block `max` (validator 1.10.0) | number |
 | cost values | `cost` maps on units and options (`{ "points": "…" }`) | number |
 
@@ -151,6 +152,7 @@ A field sees its own subject and everything containing it.
 | --- | --- |
 | Group `when` / `max` | `contingent`, `root`, `main`, `list` (+ `group` for rules checked after the group is added) |
 | Slot `when`, `repeat.max` | `slot`, `group`, `contingent`, `root`, `main`, `list` |
+| Slot `unitWhen`, slot option `when` (validator 2.6.0) | `unit`, `slot`, `group`, `contingent`, `root`, `main`, `list` |
 | Unit `when`, `limit.max`, `cost`; composition block `max`, `cost` | `unit`, `slot`, `group`, `contingent`, `root`, `main`, `list` (a block's `max` may call `unit.models()` only on a block with `replaces`; data schema spec §5.1) |
 | Upgrade `when` / `min` / `max` | `profile` (with `profileId`), `unit`, `slot`, `group`, `contingent`, `root`, `main`, `list` |
 | Option `when` / `max` / `cost` | `option`, plus everything an upgrade sees |
