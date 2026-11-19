@@ -441,6 +441,26 @@ Effects appear on `Option.effects`, slot options, sub-faction unit modifiers, gr
 - `tagOptions` (validator ≥2.2.0) limits which slot options one of the slot's tags offers, by the options' `category`: `"tagOptions": { "prime": { "categories": ["honour"] } }`. Each key must be one of the slot's `tags` (an error otherwise). See [Slot options](#slot-options-benefits-for-tagged-slots).
 - `requires` lists units the contingent (or its root group) must already hold; `when`, `min`, `max` and `cost` as above. Unavailable groups are disabled in the builder's menus and never removed automatically.
 - `effects` (stat, special-rule, trait and slot-tag effects) apply to every unit in the group, including slots added later, for rules such as "Every unit in this group gains the Gun Line trait": `"effects": [{ "kind": "trait", "add": ["Gun Line"] }]`. The group's and slots' `units` selectors see a unit's traits **before** the group's own effects, so a group can't let units in by the trait it gives them. Needs validator 1.2.0+.
+- **What `units` sees, and when.** The app judges a unit twice:
+    - Offering units for an empty slot, it sees the unit as its records give it, plus list choice values. Upgrades aren't picked until the unit is in the slot.
+    - Once the unit is in the slot, it sees the unit with its options' effects, before the group's.
+
+  So a trait that an upgrade gives can't let a unit into a slot: the unit is never offered. Use `unitWhen` for that.
+- `unitWhen` on a slot (validator ≥2.6.0) is a condition on the unit filling it, checked against the unit as configured (its options' gear and traits, before the group's effects) and shown as an issue while false. Units are still offered by role and `units`, so the player places the unit, then picks what the condition asks for. It is for "units of a second role may fill this slot, but only with some gear or upgrade":
+
+  ```json
+  { "roles": ["officer", "heavy"],
+    "unitWhen": { "if": "unit.is(role:officer) or unit.has(weapon:cannon)",
+                  "message": "A Heavy unit fills this slot only with a cannon" } }
+  ```
+
+  The slot still grants as its first granting role, whichever role fills it. A `unitWhen` that doesn't read `unit` is a warning: use the slot's `when` for whether the slot is there at all. `examples/full`'s `garrison` group has one.
+- `addedSlotRoles` (validator ≥2.6.0) limits the slots that slot options picked in the group's slots may add, for rules such as "in this group, options that add slots may not be taken" (`[]`) or "…may only add Support slots" (`["support"]`):
+    - Each `slot` effect's `roleChoices` is narrowed to the listed roles, and an option left with none isn't offered. An "add a Support or Transport slot" option is then offered as Support only.
+    - Options without a `slot` effect are unaffected. Left out, there is no limit.
+    - Roles must be game roles. A role no slot option in any loaded file can add is a warning.
+
+  `examples/full`'s `standard-core` allows only Support.
 
 ### Slots filled from another faction
 
@@ -475,7 +495,9 @@ A **UnitSelector** picks units: `{ "unitIds": [...], "roles": [...], "traits": [
 
 ### Slot options (benefits for tagged slots)
 
-`slotOptions`: `{ "id", "name", "text", "slotTag", "category"?, "slotRoles"?, "units"?, "cost"?, "effects"? }`. A slot with the tag offers one option; `units` (a selector, validator 1.4.0+) limits it to slots whose unit matches, seen before slot-option effects, e.g. `{ "traits": ["Field Army"] }`; effects are stat/special-rule/trait effects, plus at most one `{ "kind": "slot", "roleChoices": [...] }` (an extra slot, which may take `units`, a `source`, `effects` and, from validator 2.4.0, `count`: how many such slots it adds, each holding its own unit, e.g. `{ "kind": "slot", "roleChoices": ["support"], "count": 3 }` for "add three Support slots"; with several `roleChoices` the player picks one role for all of them. A second `slot` effect is a warning, since only the first is used) and one `{ "kind": "allowedRoles", "roles": [...] }`. A slot option can't have a slot-tag effect.
+`slotOptions`: `{ "id", "name", "text", "slotTag", "category"?, "slotRoles"?, "units"?, "when"?, "cost"?, "effects"? }`. A slot with the tag offers one option; `units` (a selector, validator 1.4.0+) limits it to slots whose unit matches, seen before slot-option effects, e.g. `{ "traits": ["Field Army"] }`; effects are stat/special-rule/trait effects, plus at most one `{ "kind": "slot", "roleChoices": [...] }` (an extra slot, which may take `units`, a `source`, `effects` and, from validator 2.4.0, `count`: how many such slots it adds, each holding its own unit, e.g. `{ "kind": "slot", "roleChoices": ["support"], "count": 3 }` for "add three Support slots"; with several `roleChoices` the player picks one role for all of them. A second `slot` effect is a warning, since only the first is used) and one `{ "kind": "allowedRoles", "roles": [...] }`. A slot option can't have a slot-tag effect.
+
+**`when`** (validator ≥2.6.0) offers the option only while it holds, for rules such as "this option may only be taken in a Gun Line": `"when": { "if": "group.is(group:gun-line)", "message": "Only in a Gun Line" }`. It sees the unit as `units` does, before slot-option effects, and may use `unit`, `slot`, `group`, `contingent`, `root`, `main` and `list` (not `profile`). A pick whose `when` turns false stays, with an issue. `examples/full`'s `flexible-troop` is offered only in core formations. A group's `addedSlotRoles` (see Groups) is the typed form for limiting options that add slots.
 
 **Categories** (validator ≥2.2.0). `category` (an id) says what kind of option it is among its tag's, e.g. `"honour"` for the Honour options among a tag's options. A slot can then offer only some categories for a tag:
 
@@ -592,7 +614,8 @@ unit.has(weapon:cannon) ? 25 : 15              a number: cost of an option
 | --- | --- |
 | group `when` | `contingent`, `root`, `main`, `list` |
 | group `min`/`max` | `group`, `contingent`, `root`, `main`, `list` |
-| slot `when`/`repeat.max`, slot options | `slot`, `group`, `contingent`, `root`, `main`, `list` |
+| slot `when`/`repeat.max`, slot option cost | `slot`, `group`, `contingent`, `root`, `main`, `list` |
+| slot `unitWhen`, slot option `when` (validator ≥2.6.0) | `unit`, `slot`, `group`, `contingent`, `root`, `main`, `list` |
 | unit `when`/`limit.max`/cost, composition block `max`/cost | `unit`, `slot`, `group`, `contingent`, `root`, `main`, `list` |
 | upgrade `when`/`min`/`max` | the unit's, plus `profile` when the upgrade has a `profileId` |
 | option `when`/`max`/cost, sub-choice values | `option`, plus an upgrade's |

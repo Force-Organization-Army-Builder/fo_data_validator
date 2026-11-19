@@ -877,7 +877,16 @@
             "name": "Garrison",
             "description": "Each unit in it may exchange Skirmisher (X) for Armoured (1).",
             "type": "reserve",
-            "slots": [{ "roles": ["support"], "repeat": { "min": 1, "max": 2 } }],
+            "slots": [
+                { "roles": ["support"], "repeat": { "min": 1, "max": 2 } },
+                {
+                    "roles": ["officer", "heavy"],
+                    "unitWhen": {
+                        "if": "unit.is(role:officer) or unit.has(weapon:cannon)",
+                        "message": "A Heavy unit fills this slot only with a cannon"
+                    }
+                }
+            ],
             "max": 1,
             "effects": [{ "kind": "slotTag", "add": ["garrison"] }]
         },

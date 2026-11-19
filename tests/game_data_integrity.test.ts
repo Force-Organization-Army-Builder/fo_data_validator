@@ -2087,3 +2087,78 @@ describe('special-rule remove and replace, and selector specialRules', () => {
         ]);
     });
 });
+
+describe('slot unitWhen, group addedSlotRoles and slot option when', () => {
+    const fieldArmy = (set: GameDataSet) =>
+        set.factions.find((f) => f.data.id === 'field-army')!.data;
+    const garrisonSlot = (set: GameDataSet) =>
+        fieldArmy(set).groups['garrison'].slots[1];
+
+    it('has all three in the full example', async () => {
+        const [set] = await sets(path.join(examples, 'full'));
+        assert.ok(garrisonSlot(set).unitWhen);
+        assert.deepEqual(set.game.data.groups!['standard-core'].addedSlotRoles, [
+            'support',
+        ]);
+        assert.ok(set.game.data.slotOptions!['flexible-troop'].when);
+    });
+
+    it("checks a unitWhen's expression, scopes and message", async () => {
+        const issues = await issuesAfter((set) => {
+            const slots = fieldArmy(set).groups['garrison'].slots;
+            slots[1].unitWhen = { if: 'profile.is(tag:sergeant)', message: 'x' };
+            slots[0].unitWhen = { if: 'unit.has(weapon:canon)', message: ' ' };
+        });
+        assert.deepEqual(issues, [
+            'error factions/field-army.json groups/garrison/slots/0/unitWhen: a condition needs a message for players',
+            "error factions/field-army.json groups/garrison/slots/0/unitWhen: unknown weapon 'canon' (did you mean 'cannon'?)",
+            "error factions/field-army.json groups/garrison/slots/1/unitWhen: 'profile' isn't available here (allowed: contingent, group, list, main, root, slot, unit)",
+        ]);
+    });
+
+    it("warns about a unitWhen that doesn't read the unit", async () => {
+        const issues = await issuesAfter((set) => {
+            garrisonSlot(set).unitWhen = {
+                if: 'list.limit(points) >= 1000',
+                message: 'Large lists only',
+            };
+        });
+        assert.deepEqual(issues, [
+            "warning factions/field-army.json groups/garrison/slots/1/unitWhen: doesn't read the unit, so it judges every unit the same; use the slot's `when` for whether the slot is available",
+        ]);
+    });
+
+    it('checks addedSlotRoles against the game and the slot options', async () => {
+        const issues = await issuesAfter((set) => {
+            fieldArmy(set).groups['gun-line'].addedSlotRoles = [
+                'suport',
+                'transport',
+                'transport',
+                'commander',
+            ];
+            fieldArmy(set).groups['garrison'].addedSlotRoles = [];
+        });
+        assert.deepEqual(issues, [
+            "warning factions/field-army.json groups/gun-line/addedSlotRoles: role 'transport' is listed more than once",
+            "error factions/field-army.json groups/gun-line/addedSlotRoles: unknown role 'suport'",
+            "warning factions/field-army.json groups/gun-line/addedSlotRoles: no slot option adds a 'commander' slot, so allowing it changes nothing",
+        ]);
+    });
+
+    it("checks a slot option's when, which sees the unit but no profile", async () => {
+        const issues = await issuesAfter((set) => {
+            fieldArmy(set).slotOptions!['field-promotion'].when = {
+                if: 'unit.is(role:troop) and group.is(group:gun-line)',
+                message: 'Troops in a Gun Line',
+            };
+            set.game.data.slotOptions!['extra-support'].when = {
+                if: 'profile.is(tag:sergeant)',
+                message: '',
+            };
+        });
+        assert.deepEqual(issues, [
+            'error game.json slotOptions/extra-support/when: a condition needs a message for players',
+            "error game.json slotOptions/extra-support/when: 'profile' isn't available here (allowed: contingent, group, list, main, root, slot, unit)",
+        ]);
+    });
+});

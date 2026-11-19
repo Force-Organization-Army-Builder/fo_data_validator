@@ -1074,6 +1074,9 @@ export const SlotSchema = z.strictObject({
     source: SlotSourceSchema.optional(),
     effects: z.array(SlotUnitEffectSchema).optional(),
     when: ConditionSchema.optional(),
+    unitWhen: ConditionSchema.optional().describe(
+        '(validator 2.6.0) a condition on the unit filling the slot, checked against it as configured (its options\' gear and traits included, before the group\'s effects) and shown as an issue while false; units are still offered by role and `units`. E.g. a slot of two roles that units of the second may fill only with some gear: `{ "if": "unit.is(role:officer) or unit.has(equipment:signal-array)", "message": "…" }`'
+    ),
 });
 
 export const GroupRequirementSchema = z
@@ -1124,6 +1127,12 @@ export const GroupSchema = z.strictObject({
         .optional()
         .describe(
             'applied to every unit in the group, e.g. "Every unit in this group gains the Gun Line trait"'
+        ),
+    addedSlotRoles: z
+        .array(SlugSchema)
+        .optional()
+        .describe(
+            '(validator 2.6.0) the only roles the `slot` effects of slot options picked in this group\'s slots may add: each effect\'s `roleChoices` is narrowed to them, and an option left with none isn\'t offered. `[]` = no option that adds a slot; left out, no limit'
         ),
 });
 
@@ -1181,6 +1190,9 @@ export const SlotOptionSchema = z
             'added to the cost of the unit in the slot'
         ),
         effects: z.array(SlotOptionEffectSchema).optional(),
+        when: ConditionSchema.optional().describe(
+            '(validator 2.6.0) only offered while true, seeing the unit as its `units` does; a pick whose `when` turns false is an issue. E.g. `{ "if": "group.is(group:gun-line)", "message": "Only in a Gun Line" }`'
+        ),
     })
     .describe(
         "A choice made for a slot with the option's tag, applying its effects to the unit in the slot (and the group), e.g. special benefits or enhancements. One option per tag per slot."
