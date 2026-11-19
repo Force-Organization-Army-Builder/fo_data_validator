@@ -136,6 +136,12 @@ const unitMatch = {
     profiles: ProfileFilterSchema.optional().describe(
         'a unit matches when one of its profiles does (or the unit itself, if it has no profiles)'
     ),
+    specialRules: z
+        .array(SlugSchema)
+        .optional()
+        .describe(
+            '(validator 2.5.0) special rule ids: a unit matches when it or one of its profiles holds any of them, with any value'
+        ),
 };
 
 export const UnitExclusionSchema = z
@@ -214,12 +220,33 @@ export const SpecialRuleSelectionSchema = z.strictObject({
     value: z.string().optional(),
 });
 
-export const SpecialRuleEffectSchema = z.strictObject({
-    kind: z.literal('specialRule'),
-    profiles: ProfileFilterSchema.optional(),
-    rule: SpecialRuleSelectionSchema,
-    when: ConditionSchema.optional(),
-});
+export const SpecialRuleEffectSchema = z
+    .strictObject({
+        kind: z.literal('specialRule'),
+        profiles: ProfileFilterSchema.optional(),
+        rule: SpecialRuleSelectionSchema.optional().describe(
+            'the rule each picked profile gains'
+        ),
+        remove: z
+            .array(SlugSchema)
+            .optional()
+            .describe(
+                '(validator 2.5.0) rule ids each picked profile loses, whatever their value'
+            ),
+        replace: z
+            .strictObject({
+                from: z.array(SlugSchema),
+                to: SpecialRuleSelectionSchema,
+            })
+            .optional()
+            .describe(
+                '(validator 2.5.0) each picked profile loses any of `from` (whatever their value) and, only if it held one, gains `to`, e.g. `{ "from": ["skirmisher"], "to": { "id": "armoured", "value": "1" } }`'
+            ),
+        when: ConditionSchema.optional(),
+    })
+    .describe(
+        "changes the special rules of the profiles `profiles` picks (all of them when left out) and the unit's own: `remove`, then `replace`, then `rule` (added). Needs at least one of the three"
+    );
 
 export const TraitEffectSchema = z
     .strictObject({

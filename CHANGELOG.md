@@ -1,5 +1,22 @@
 # Changelog
 
+## 2.5.0
+
+- **Taking special rules away.** A `specialRule` effect may now `remove` rules, and `replace` them: `{ "kind": "specialRule", "remove": ["skirmisher"] }` and `{ "kind": "specialRule", "replace": { "from": ["skirmisher"], "to": { "id": "armoured", "value": "1" } } }`. They work like the trait effect's: `remove` takes every selection of those ids off the profiles the `profiles` filter picks (all of them when it is left out) and off the unit's own `specialRules`, whatever their value. `replace` takes any of `from` and gives `to` only where one was taken. So "models with X exchange it for Y" needs no filter: a model without X is untouched. `from` matches any value, and the same id in `from` and `to` re-values a rule. `rule` (the rule given) is now optional; an effect needs at least one of `rule`, `remove` and `replace`, and applies them in that order.
+- **Selectors match special rules.** A `UnitSelector` (and its `exclude` entries) takes `specialRules: [...]`. A unit matches when it or one of its profiles holds any of the listed rules, with any value. It sees the rules at the selector's point in the effect order, as `traits` does.
+- **A choice each unit of a group may make.** The two together cover a rule such as "each unit in this group may exchange Skirmisher (X) for Armoured (1)" without touching a unit record. The game declares a slot tag, the group tags its slots (`{ "kind": "slotTag", "add": ["garrison"] }`), and a slot option of that tag with `units: { "specialRules": ["skirmisher"] }` holds the `replace`. Units added later with the rule get the choice too. Slot options apply last, so the exchange sees the rule however the unit got it. The authoring guide describes this under Slot options.
+- **New checks.**
+    - Errors: a `rule` or `replace.to` id unknown where the effect is defined, as before for `rule`; a `remove` or `replace.from` id that no loaded game, faction or sub-faction defines (a game-level effect may take away a faction's rule); an empty `remove` or `from`; a special-rule effect with none of the three. A non-slug id in `remove`, `from` or a selector's `specialRules`, or a `replace` without `to`, is a shape error.
+    - Warnings: a value on a `to` rule that isn't `configurable`, as for any selection; a configurable `to` with no value and no `defaultValue`; an id listed twice; a `rule` that `remove` or `from` also names; a selector's `specialRules` id that no loaded file defines.
+- `examples/full` gives the Pioneers of `pioneer-squad` the new configurable faction rule Skirmisher (X), declares a `garrison` slot tag, and adds a `garrison` group whose `dig-in` slot option exchanges Skirmisher for Armoured (1). It declares `"minValidatorVersion": "2.5.0"`. The authoring guide (Effects, Selectors, Slot options), the data schema spec (new §5.4, §5.2 order, §8) and the README say so.
+- **For the app:**
+    - Apply a special-rule effect's `remove`, then `replace`, then `rule`, to each picked profile and to the unit's own rules. `SpecialRuleEffect.rule` is now optional, so code that reads `effect.rule` (applying effects, describing a slot option) must handle its absence and describe a replace ("Skirmisher → Armoured (1)") and a removal.
+    - Match selector `specialRules` against the unit's rules as they stand at that selector's step.
+    - Work out a rule's `grants` and `slots` from the rules the unit holds after every step, so a removed rule stops granting and a gained one starts.
+    - Show the changed rules on the datasheet.
+    - `SpecialRuleEffect` gains `remove` and `replace`; `UnitSelector` and `UnitExclusion` gain `specialRules`.
+- `schemaVersion` stays 1 and `expressionVersion` stays 1; everything is additive. Data using `remove`, `replace` or selector `specialRules` should set `"minValidatorVersion": "2.5.0"` in its manifest, and needs an app that supports them.
+
 ## 2.4.0
 
 - **A count on a slot option's `slot` effect.** `{ "kind": "slot", "roleChoices": ["support"], "count": 3 }` adds three slots to the group, each holding its own unit, for a rule such as "add three Support slots". `count` is a whole number of 1 or more and defaults to 1. With several `roleChoices` the player picks one role, which all of the slots take. Only the slot option's `slot` effect takes it: group slots and a special rule's `slots` (already a list) are unchanged.

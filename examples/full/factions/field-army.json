@@ -687,7 +687,8 @@
                     "id": "pioneer",
                     "name": "Pioneer",
                     "template": "infantry",
-                    "stats": { "move": "5", "skill": "5", "wounds": "1", "morale": "6", "save": "5+" }
+                    "stats": { "move": "5", "skill": "5", "wounds": "1", "morale": "6", "save": "5+" },
+                    "specialRules": [{ "id": "skirmisher", "value": "2" }]
                 },
                 {
                     "id": "pioneer-chief",
@@ -840,6 +841,12 @@
             "name": "Disciplined",
             "text": "Re-rolls failed morale tests once per turn."
         },
+        "skirmisher": {
+            "id": "skirmisher",
+            "name": "Skirmisher (X)",
+            "text": "May move X inches after deployment.",
+            "configurable": true
+        },
         "construct-handler": {
             "id": "construct-handler",
             "name": "Construct Handler",
@@ -865,6 +872,15 @@
         }
     },
     "groups": {
+        "garrison": {
+            "id": "garrison",
+            "name": "Garrison",
+            "description": "Each unit in it may exchange Skirmisher (X) for Armoured (1).",
+            "type": "reserve",
+            "slots": [{ "roles": ["support"], "repeat": { "min": 1, "max": 2 } }],
+            "max": 1,
+            "effects": [{ "kind": "slotTag", "add": ["garrison"] }]
+        },
         "armoured-spearhead": {
             "id": "armoured-spearhead",
             "name": "Armoured Spearhead",
@@ -932,6 +948,19 @@
         }
     },
     "slotOptions": {
+        "dig-in": {
+            "id": "dig-in",
+            "name": "Dig In",
+            "text": "Every model in this unit with Skirmisher (X) exchanges it for Armoured (1).",
+            "slotTag": "garrison",
+            "units": { "specialRules": ["skirmisher"] },
+            "effects": [
+                {
+                    "kind": "specialRule",
+                    "replace": { "from": ["skirmisher"], "to": { "id": "armoured", "value": "1" } }
+                }
+            ]
+        },
         "field-promotion": {
             "id": "field-promotion",
             "name": "Field Promotion",

@@ -1806,7 +1806,7 @@ class Validator {
                     );
             }
         } else if (effect.kind === 'specialRule') {
-            this.rule(path, effect.rule, scope);
+            this.specialRuleEffect(path, effect, scope);
         } else if (effect.kind === 'slotTag') {
             this.slotTagEffect(path, effect, scope);
             // it tags the slot, not a profile
@@ -1932,6 +1932,91 @@ class Validator {
         }
     }
 
+    /* A special-rule effect: the rule it adds, and (validator 2.5.0) those it removes or replaces */
+    private specialRuleEffect(
+        path: string,
+        effect: SpecialRuleEffect,
+        scope: Scope
+    ) {
+        const { rule, remove, replace } = effect;
+        if (!rule && !remove && !replace)
+            this.report(
+                path,
+                'a special-rule effect needs rule, remove or replace'
+            );
+        if (remove) {
+            if (!remove.length)
+                this.report(
+                    `${path}/remove`,
+                    'remove needs at least one special rule'
+                );
+            this.duplicates(`${path}/remove`, remove, 'special rule');
+            for (const id of remove) this.heldRule(`${path}/remove`, id);
+        }
+        if (replace) {
+            const at = `${path}/replace`;
+            if (!replace.from.length)
+                this.report(
+                    `${at}/from`,
+                    'replace needs at least one special rule in from'
+                );
+            this.duplicates(`${at}/from`, replace.from, 'special rule');
+            for (const id of replace.from) this.heldRule(`${at}/from`, id);
+            this.rule(`${at}/to`, replace.to, scope);
+            const to =
+                scope.records.specialRules?.[replace.to.id] ??
+                scope.game.specialRules?.[replace.to.id];
+            if (
+                to?.configurable &&
+                replace.to.value === undefined &&
+                to.defaultValue === undefined
+            )
+                this.report(
+                    `${at}/to`,
+                    `'${replace.to.id}' takes a value, but neither the replacement nor the rule's defaultValue gives one`,
+                    'warning'
+                );
+        }
+        if (rule) {
+            this.rule(path, rule, scope);
+            if ([...(remove ?? []), ...(replace?.from ?? [])].includes(rule.id))
+                this.report(
+                    path,
+                    `'${rule.id}' is both given and taken away`,
+                    'warning'
+                );
+        }
+    }
+
+    /*
+     * A rule an effect takes away: it only has to be one some unit could hold,
+     * so a game-level effect may name a faction's rule
+     */
+    private heldRule(path: string, id: string) {
+        if (!this.anyRuleIds().has(id))
+            this.report(
+                path,
+                `unknown special rule '${id}'${didYouMean(id, [...this.anyRuleIds()])}`
+            );
+    }
+
+    /* Every special rule id in the game and any loaded faction or sub-faction */
+    private loadedRuleIds?: Set<string>;
+
+    private anyRuleIds(): Set<string> {
+        if (!this.loadedRuleIds) {
+            const { game, factions, subFactions } = this.set;
+            this.loadedRuleIds = new Set(
+                [
+                    game.data.specialRules,
+                    ...factions.map((f) => f.data.specialRules),
+                    ...subFactions.map((f) => f.data.specialRules),
+                ].flatMap((rules) => keys(rules))
+            );
+        }
+        return this.loadedRuleIds;
+    }
+
     private traitEffect(path: string, effect: TraitEffect) {
         const { add = [], remove = [], replace } = effect;
         if (!add.length && !remove.length && !replace)
@@ -1992,6 +2077,15 @@ class Validator {
                             'warning'
                         );
                 }
+            // a game-level selector may name a faction's rule, so any loaded one counts
+            for (const id of m.specialRules ?? []) {
+                if (!this.anyRuleIds().has(id))
+                    this.report(
+                        at,
+                        `unknown special rule '${id}'${didYouMean(id, [...this.anyRuleIds()])}`,
+                        'warning'
+                    );
+            }
         };
         match(path, selector);
         selector.exclude?.forEach((e, i) => match(`${path}/exclude/${i}`, e));
