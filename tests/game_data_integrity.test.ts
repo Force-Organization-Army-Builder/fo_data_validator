@@ -1946,3 +1946,144 @@ describe('slot tag effects and slot option categories', () => {
         ]);
     });
 });
+
+describe('special-rule remove and replace, and selector specialRules', () => {
+    const fieldArmy = (set: GameDataSet) =>
+        set.factions.find((f) => f.data.id === 'field-army')!.data;
+    const exchange = {
+        kind: 'specialRule' as const,
+        replace: {
+            from: ['skirmisher'],
+            to: { id: 'armoured', value: '1' },
+        },
+    };
+
+    it('has an exchange offered by a group in the full example', async () => {
+        const [set] = await sets(path.join(examples, 'full'));
+        const faction = fieldArmy(set);
+        const option = faction.slotOptions!['dig-in'];
+        assert.deepEqual(option.units, { specialRules: ['skirmisher'] });
+        assert.ok(
+            option.effects?.some((e) => e.kind === 'specialRule' && e.replace)
+        );
+        assert.ok(
+            faction.groups['garrison'].effects?.some(
+                (e) => e.kind === 'slotTag' && e.add.includes('garrison')
+            )
+        );
+    });
+
+    it('takes remove and replace wherever a special-rule effect goes', async () => {
+        const issues = await issuesAfter((set) => {
+            const faction = fieldArmy(set);
+            const option = faction.units['squad'].upgrades!['squad-options']
+                .options['banner'] as { effects?: Array<unknown> };
+            option.effects = [...(option.effects ?? []), exchange];
+            const group = faction.groups['gun-line'];
+            group.effects = [
+                ...(group.effects ?? []),
+                {
+                    kind: 'specialRule',
+                    profiles: { anyOf: ['infantry'] },
+                    remove: ['skirmisher'],
+                    rule: { id: 'fearless' },
+                },
+            ];
+            // a game-level effect may take away a faction's rule
+            const value = set.game.data.choices!['stance'].values['offensive'];
+            value.effects = [
+                ...(value.effects ?? []),
+                {
+                    kind: 'specialRule',
+                    replace: { from: ['skirmisher'], to: { id: 'fearless' } },
+                },
+            ];
+            // re-valuing a rule: the same id in from and to
+            group.slots[0].effects = [
+                {
+                    kind: 'specialRule',
+                    replace: {
+                        from: ['armoured'],
+                        to: { id: 'armoured', value: '3' },
+                    },
+                },
+            ];
+        });
+        assert.deepEqual(issues, []);
+    });
+
+    it('reports unknown rules, empty lists and an effect that does nothing', async () => {
+        const issues = await issuesAfter((set) => {
+            fieldArmy(set).groups['gun-line'].effects = [
+                {
+                    kind: 'specialRule',
+                    remove: ['skirmish'],
+                    replace: { from: ['raider'], to: { id: 'holder' } },
+                },
+                { kind: 'specialRule', remove: [] },
+                {
+                    kind: 'specialRule',
+                    replace: { from: [], to: { id: 'fearless' } },
+                },
+                { kind: 'specialRule' },
+            ];
+        });
+        assert.deepEqual(issues, [
+            "error factions/field-army.json groups/gun-line/effects/0/remove: unknown special rule 'skirmish' (did you mean 'skirmisher'?)",
+            "error factions/field-army.json groups/gun-line/effects/0/replace/from: unknown special rule 'raider'",
+            "error factions/field-army.json groups/gun-line/effects/0/replace/to: unknown special rule 'holder'",
+            'error factions/field-army.json groups/gun-line/effects/1/remove: remove needs at least one special rule',
+            'error factions/field-army.json groups/gun-line/effects/2/replace/from: replace needs at least one special rule in from',
+            'error factions/field-army.json groups/gun-line/effects/3: a special-rule effect needs rule, remove or replace',
+        ]);
+    });
+
+    it('warns about repeats, values and a rule both given and taken away', async () => {
+        const issues = await issuesAfter((set) => {
+            fieldArmy(set).groups['gun-line'].effects = [
+                {
+                    kind: 'specialRule',
+                    remove: ['fearless', 'fearless'],
+                    rule: { id: 'fearless' },
+                },
+                {
+                    kind: 'specialRule',
+                    replace: {
+                        from: ['armoured', 'armoured'],
+                        to: { id: 'disciplined', value: '2' },
+                    },
+                },
+                {
+                    kind: 'specialRule',
+                    replace: {
+                        from: ['armoured'],
+                        to: { id: 'skirmisher' },
+                    },
+                },
+            ];
+        });
+        assert.deepEqual(issues, [
+            "warning factions/field-army.json groups/gun-line/effects/0/remove: special rule 'fearless' is listed more than once",
+            "warning factions/field-army.json groups/gun-line/effects/0: 'fearless' is both given and taken away",
+            "warning factions/field-army.json groups/gun-line/effects/1/replace/from: special rule 'armoured' is listed more than once",
+            "warning factions/field-army.json groups/gun-line/effects/1/replace/to: 'disciplined' is given a value but takes none",
+            "warning factions/field-army.json groups/gun-line/effects/2/replace/to: 'skirmisher' takes a value, but neither the replacement nor the rule's defaultValue gives one",
+        ]);
+    });
+
+    it("warns about a selector's unknown rule, but takes any loaded faction's", async () => {
+        const issues = await issuesAfter((set) => {
+            fieldArmy(set).groups['gun-line'].units = {
+                specialRules: ['skirmishr'],
+                exclude: [{ specialRules: ['fearless'] }],
+            };
+            // a game-level selector may name a faction's rule
+            set.game.data.selectors!['vehicles'].match.specialRules = [
+                'skirmisher',
+            ];
+        });
+        assert.deepEqual(issues, [
+            "warning factions/field-army.json groups/gun-line: unknown special rule 'skirmishr' (did you mean 'skirmisher'?)",
+        ]);
+    });
+});

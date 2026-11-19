@@ -350,7 +350,7 @@ A saved list's unit records `composition: { [blockId]: copies }` instead of `add
 
 A trait effect (validator 1.2.0) changes a unit's `traits`: `add` gives traits, `remove` takes them away if present, and `replace` takes away any of `from` and gives `to` only if one was there. There is no profile filter and its `when` has no `profile` scope. `add` gives the trait to the unit; `remove` and `replace` (validator 1.11.0) also act on each profile's own `traits`, so a profile that held one of `from` gets `to` on that profile (a faction trait swap reaches every model, and a profile-only trait stays on its profile). It may appear wherever stat and special-rule effects do: option `effects`, slot-option `effects`, unit-modifier `actions`, group `effects` (§7) and list choice values' `effects` (§3.7). At least one of `add`, `remove` and `replace` is required; a trait both given and taken away is a warning.
 
-**Order.** The app resolves a played unit's traits and effects in steps: the unit's own `traits`, then sub-faction unit modifiers (together, the resolved faction unit), list choice value effects (§3.7, validator 1.13.0), option effects, the group's effects, the slot's `effects` (§7.1), and slot-option effects. Each step's conditions see the traits from the steps before it, and a choice value's `units` selector sees the resolved faction unit. A group's and its slots' `units` selectors see the unit's traits before the group's and slot options' effects (a group can't admit units by the trait it gives them, but can by one a list choice gives); a slot with a `source` sees only the unit's own `traits`. Everything else (`trait:` references in other expressions, list rules) sees the final traits. Slot-tag effects (§5.3) come from the steps before slot options, so every tag they add is in place before the slot's options are offered.
+**Order.** The app resolves a played unit's traits and effects in steps: the unit's own `traits`, then sub-faction unit modifiers (together, the resolved faction unit), list choice value effects (§3.7, validator 1.13.0), option effects, the group's effects, the slot's `effects` (§7.1), and slot-option effects. Each step's conditions see the traits from the steps before it, and a choice value's `units` selector sees the resolved faction unit. A group's and its slots' `units` selectors see the unit's traits before the group's and slot options' effects (a group can't admit units by the trait it gives them, but can by one a list choice gives); a slot with a `source` sees only the unit's own `traits`. Everything else (`trait:` references in other expressions, list rules) sees the final traits. Slot-tag effects (§5.3) come from the steps before slot options, so every tag they add is in place before the slot's options are offered. Special rules follow the same steps (§5.4).
 
 ### 5.3 Slot-tag effects
 
@@ -367,6 +367,28 @@ It may appear in unit-modifier `actions` (§4), option `effects` (§6), group `e
 It is for rules such as "while this sub-faction is taken, units in an Elite formation may each take one Honour option, as if they filled a Prime slot", written as the second effect above on a unit modifier of the sub-faction (`examples/full`'s `veterans`, `honoured-heavies`).
 
 Checks: each tag in `add` must be declared in the game's `slotTags` (an error otherwise); `add` needs at least one tag, and one listed twice is a warning; `categories` as for `tagOptions` (§3.8).
+
+### 5.4 Special-rule effects
+
+```json
+{ "kind": "specialRule", "profiles": { "anyOf": ["infantry"] }, "rule": { "id": "fearless" } }
+{ "kind": "specialRule", "remove": ["skirmisher"] }
+{ "kind": "specialRule", "replace": { "from": ["skirmisher"], "to": { "id": "armoured", "value": "1" } } }
+```
+
+A special-rule effect changes the special rules of the profiles its `profiles` filter picks (every profile when left out), and of the unit's own `specialRules`. `rule` gives a rule selection, skipped where the same id and value is already held. From validator 2.5.0 it can also take rules away:
+
+- `remove` takes every selection of those ids, whatever their value.
+- `replace` takes every selection of a `from` id and gives `to` only where one was taken, so "models with X exchange it for Y" reaches exactly the models with X. The same id in `from` and `to` re-values the rule.
+
+`rule` is optional from 2.5.0; at least one of `rule`, `remove` and `replace` is required. Within one effect they apply in the order `remove`, `replace`, `rule`. Like every effect, it acts on the rules as they stand at its step (§5.2, Order). A rule a later step gives isn't taken away, and a slot option, the last step, sees them all. Rule-driven mechanics (a rule's `grants`, §3.8, and `slots`, §7.1) follow the rules the unit holds after every step.
+
+It may appear wherever stat effects do: option `effects`, slot-option `effects`, unit-modifier `actions`, group and slot `effects` (§7) and list choice values' `effects` (§3.7). Offered as a slot option on a tag a group gives its slots (§3.8, §5.3), it is a choice each unit of the group may make.
+
+Checks:
+
+- **Errors:** a `rule` or `to` id unknown where the effect is defined (the faction with its sub-faction, then the game); a `remove` or `from` id that no loaded game, faction or sub-faction defines (these only take away what a unit holds, so a game-level effect may name a faction's rule); an empty `remove` or `from`; an effect with none of the three.
+- **Warnings:** a value given to a rule that isn't `configurable`; a configurable `to` with no value and no `defaultValue`; an id listed twice; a `rule` that `remove` or `from` also names.
 
 ## 6. Upgrades and options
 
@@ -496,7 +518,9 @@ A named selector's own `match` is always inline, so selectors can't refer to eac
 
 **`traits`** (validator 1.2.0) matches a unit with any of the listed traits, case-insensitively: `{ "traits": ["Field Army"] }`. A trait no unit has or is given is a warning. Profile filters don't match traits; use `when: unit.is(trait:…)` on an effect instead.
 
-**`exclude`** (validator 1.3.0) lists units to leave out: a unit matching any entry doesn't match the selector. Each entry takes `unitIds`, `roles`, `traits` and `profiles`, all of which must match, like a selector. `{ "exclude": [{ "traits": ["Veterans"] }, { "profiles": { "anyOf": ["Unique"] } }] }` is "not a Veterans unit, and no Unique model": unlike `profiles.noneOf`, which matches a unit with *some* profile outside the list, an excluded `profiles.anyOf` leaves out a unit with *any* matching profile.
+**`specialRules`** (validator 2.5.0) matches a unit when it or one of its profiles holds any of the listed rule ids, with any value: `{ "specialRules": ["skirmisher"] }`. It sees the unit's rules at the selector's point in the order, as `traits` sees its traits (§5.2): a group's and its slots' `units` before the group's effects, a slot option's `units` before slot-option effects, a sourced slot's `units` only the unit's own rules. A rule id no loaded game, faction or sub-faction defines is a warning.
+
+**`exclude`** (validator 1.3.0) lists units to leave out: a unit matching any entry doesn't match the selector. Each entry takes `unitIds`, `roles`, `traits`, `profiles` and `specialRules`, all of which must match, like a selector. `{ "exclude": [{ "traits": ["Veterans"] }, { "profiles": { "anyOf": ["Unique"] } }] }` is "not a Veterans unit, and no Unique model": unlike `profiles.noneOf`, which matches a unit with *some* profile outside the list, an excluded `profiles.anyOf` leaves out a unit with *any* matching profile.
 
 ## 9. Expressions in data
 

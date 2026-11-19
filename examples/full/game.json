@@ -140,6 +140,14 @@
             "optionLabel": "Prime Option",
             "color": "amber",
             "icon": "star"
+        },
+        "garrison": {
+            "id": "garrison",
+            "name": "Garrison",
+            "description": "A unit in a Garrison may take a Garrison option",
+            "optionLabel": "Garrison Option",
+            "color": "teal",
+            "icon": "flag"
         }
     },
     "resources": {

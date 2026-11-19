@@ -458,3 +458,40 @@ describe("a slot option's slot effect count", () => {
         );
     });
 });
+
+describe('special-rule remove and replace, and selector specialRules', () => {
+    type Loose = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+
+    async function issuesAfter(change: (faction: Loose) => void) {
+        const all = await files();
+        change(all.find((f) => f.kind === 'Faction')!.data as Loose);
+        return checkShapes(all).map((i) => `${i.path}: ${i.message}`);
+    }
+
+    it('takes an effect with remove or replace and no rule', async () => {
+        assert.deepEqual(
+            await issuesAfter((faction) => {
+                faction.groups['gun-line'].effects.push({
+                    kind: 'specialRule',
+                    remove: ['skirmisher'],
+                });
+            }),
+            []
+        );
+    });
+
+    it('needs a to on replace and slug rule ids', async () => {
+        const issues = await issuesAfter((faction) => {
+            const option = faction.slotOptions['dig-in'];
+            option.effects[0].replace = { from: ['Skirmisher'] };
+            option.units = { specialRules: ['Skirmisher (X)'] };
+        });
+        const slug =
+            'ids are lowercase kebab-case: letters a-z and digits, with single hyphens between words, e.g. `infantry-squad`';
+        assert.deepEqual(issues, [
+            `slotOptions/dig-in/units/specialRules/0: ${slug}`,
+            `slotOptions/dig-in/effects/0/replace/from/0: ${slug}`,
+            "slotOptions/dig-in/effects/0/replace: missing required property 'to'",
+        ]);
+    });
+});

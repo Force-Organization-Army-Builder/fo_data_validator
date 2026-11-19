@@ -355,6 +355,21 @@ Stat and special-rule changes on profiles chosen by a **ProfileFilter** `{ "anyO
 { "kind": "specialRule", "rule": { "id": "fear", "value": "2" } }
 ```
 
+A special-rule effect can also take rules away (validator ≥2.5.0), for rules such as "models with Skirmisher (X) exchange it for Armoured (1)":
+
+```json
+{ "kind": "specialRule", "remove": ["skirmisher"] }
+{ "kind": "specialRule", "replace": { "from": ["skirmisher"], "to": { "id": "armoured", "value": "1" } } }
+```
+
+- `remove` takes the rules off every profile the filter picks, whatever their value. `replace` takes off any of `from` and gives `to` only to a profile that held one, so it needs no filter to reach "models with the rule": a model without it is untouched. Both also act on the unit's own `specialRules`.
+- `from` matches any value: Skirmisher (2) and Skirmisher (3) are both exchanged. The same id in `from` and `to` re-values a rule.
+- `to` is a rule selection like `rule`: a value on a rule that isn't `configurable` is a warning. A configurable `to` with no value takes the rule's `defaultValue`, and a warning says when it has none.
+- One effect may hold `rule`, `remove` and `replace` together. They apply in that order: `remove`, then `replace`, then `rule`. At least one is needed, and a rule both given and taken away is a warning.
+- A rule they name must exist. `rule` and `to` resolve as usual: the faction with its sub-faction, then the game. `remove` and `from` may name a rule of any loaded faction, since they only take away what a unit holds; a game-level list choice can therefore take away a faction's rule.
+- An effect only acts on the rules the unit holds at its step (see the order below). In a slot option, the last step, it sees every rule however the unit got it.
+- To offer such a change to each unit of a group as the player's choice, see [Slot options](#slot-options-benefits-for-tagged-slots). For a change every unit in the group gets, put the effect in the group's `effects`.
+
 A **trait effect** changes the unit's traits. Traits belong to the whole unit, so it has no profile filter, and its `when` can't use `profile`:
 
 ```json
@@ -456,7 +471,7 @@ Some rules add a slot that another faction's units, or units of other sub-factio
 
 ### Selectors
 
-A **UnitSelector** picks units: `{ "unitIds": [...], "roles": [...], "traits": [...], "profiles": { "anyOf": [...], "noneOf": [...] }, "exclude": [...] }` (omitted field matches all; `traits` matches a unit with any of them, case-insensitively). `exclude` lists units to leave out, each entry matched like a selector: `{ "exclude": [{ "profiles": { "anyOf": ["Unique"] } }] }` leaves out any unit with a Unique profile, which `profiles.noneOf` can't say (it matches a unit with *some* profile that isn't Unique). Needs validator 1.3.0+. Profile filters don't look at traits; on an effect use `when: unit.is(trait:…)`. Anywhere one is accepted, `"@name"` refers to a **NamedSelector** in `selectors` (`{ "id", "name", "match": <UnitSelector> }`), looked up in the faction (with its sub-faction), then the game.
+A **UnitSelector** picks units: `{ "unitIds": [...], "roles": [...], "traits": [...], "profiles": { "anyOf": [...], "noneOf": [...] }, "specialRules": [...], "exclude": [...] }` (omitted field matches all; `traits` matches a unit with any of them, case-insensitively). `exclude` lists units to leave out, each entry matched like a selector: `{ "exclude": [{ "profiles": { "anyOf": ["Unique"] } }] }` leaves out any unit with a Unique profile, which `profiles.noneOf` can't say (it matches a unit with *some* profile that isn't Unique). Needs validator 1.3.0+. `specialRules` (validator ≥2.5.0) matches a unit when it or one of its profiles holds any of the listed rule ids, with any value: `{ "specialRules": ["skirmisher"] }`. A rule id no loaded file defines is a warning. Like `traits`, it sees the unit as it stands at the selector's point: a group's and slot's `units` see the unit before the group's effects, and a slot option's `units` sees it before slot-option effects. Profile filters don't look at traits; on an effect use `when: unit.is(trait:…)`. Anywhere one is accepted, `"@name"` refers to a **NamedSelector** in `selectors` (`{ "id", "name", "match": <UnitSelector> }`), looked up in the faction (with its sub-faction), then the game.
 
 ### Slot options (benefits for tagged slots)
 
@@ -470,6 +485,31 @@ A **UnitSelector** picks units: `{ "unitIds": [...], "roles": [...], "traits": [
 **Combining.** When several restrictions apply to one tag on one slot (the slot's `tagOptions` and one or more slot-tag effects adding that tag), only options **every** restricting source allows are offered: the categories are intersected. A source without categories (a plain `tags` entry, a slot-tag effect without `categories`) restricts nothing, so it never widens a restricted one. With no restriction, every option of the tag is offered, as before. An option without a `category` is offered only where its tag is unrestricted.
 
 A category in `tagOptions` or a slot-tag effect that no slot option of the tag has, in the game or any loaded faction or sub-faction, is a warning ("offers nothing"); an empty `categories` list is an error. `examples/full`'s `heavy-detachment` limits its Prime slot to the `honour` category (`honoured-crew`).
+
+**A choice each unit of a group may make** (validator ≥2.5.0). Take a rule such as "when a unit in this group is added to the list, every model in it with Skirmisher (X) may exchange it for Armoured (1)". Declare a slot tag for the group, have the group tag the slots that hold its units, and write the exchange as a slot option that only units with the rule are offered:
+
+```json
+// game.json
+"slotTags": { "garrison": { "id": "garrison", "name": "Garrison", "optionLabel": "Garrison Option" } }
+
+// the faction (the slot option sits where its rule ids resolve)
+"slotOptions": {
+    "dig-in": { "id": "dig-in", "name": "Dig In", "text": "…", "slotTag": "garrison",
+                "units": { "specialRules": ["skirmisher"] },
+                "effects": [{ "kind": "specialRule",
+                              "replace": { "from": ["skirmisher"], "to": { "id": "armoured", "value": "1" } } }] }
+},
+"groups": {
+    "garrison": { "id": "garrison", "name": "Garrison", "type": "reserve", "slots": [ … ],
+                  "effects": [{ "kind": "slotTag", "add": ["garrison"] }] }
+}
+```
+
+- Each slot holds one unit, and the player picks at most one option per tag per slot, so the choice is made unit by unit. Units outside the group never get the tag.
+- No unit record changes: a unit added later with the rule is offered the choice as well.
+- Slot options apply last, so the exchange sees the rule however the unit got it.
+- Give each group its own tag. Alternatively, share one tag and keep the groups' options apart with `category` and the slot-tag effect's `categories`.
+- `examples/full`'s `garrison` group and `dig-in` slot option do this for the `pioneer-squad`, whose Pioneers hold Skirmisher (2) and whose Pioneer Chief doesn't.
 
 ## 6. The sub-faction file (`SubFaction`)
 
