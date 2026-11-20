@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Docs: offering units for a slot with `unitWhen`.** The data schema spec (§7), the authoring guide and the schema's description of `unitWhen` now allow an app to judge `unitWhen` optimistically when offering units. Gear, traits and rules that any of the unit's options could give count as held. A unit that fails even then can never qualify and may be hidden; one that could qualify may be marked with the message. A placed unit is still checked live. No schema or check change.
+
 ## 2.7.0
 
 - **Effects a group gives units outside it.** A group's `listEffects` is a list of `{ "units"?, "scope"?, "effects" }`. While the group is in the list, each entry's effects apply to every matching unit in reach. Example: `"listEffects": [{ "units": "@vehicles", "effects": [{ "kind": "specialRule", "rule": { "id": "fearless" } }] }]` for "every Walker in a list with this group gains Fearless".
