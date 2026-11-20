@@ -446,7 +446,7 @@ Effects appear on `Option.effects`, slot options, sub-faction unit modifiers, gr
     - Once the unit is in the slot, it sees the unit with its options' effects, before the group's.
 
   So a trait that an upgrade gives can't let a unit into a slot: the unit is never offered. Use `unitWhen` for that.
-- `unitWhen` on a slot (validator ≥2.6.0) is a condition on the unit filling it, checked against the unit as configured (its options' gear and traits, before the group's effects) and shown as an issue while false. Units are still offered by role and `units`, so the player places the unit, then picks what the condition asks for. It is for "units of a second role may fill this slot, but only with some gear or upgrade":
+- `unitWhen` on a slot (validator ≥2.6.0) is a condition on the unit filling it, checked against the unit as configured (its options' gear and traits, before the group's effects) and shown as an issue while false. Units are still offered by role and `units`, so the player places the unit, then picks what the condition asks for. The app may hide units that no option could ever make meet the condition, such as a Heavy unit with no cannon option below. It is for "units of a second role may fill this slot, but only with some gear or upgrade":
 
   ```json
   { "roles": ["officer", "heavy"],

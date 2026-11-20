@@ -1075,7 +1075,7 @@ export const SlotSchema = z.strictObject({
     effects: z.array(SlotUnitEffectSchema).optional(),
     when: ConditionSchema.optional(),
     unitWhen: ConditionSchema.optional().describe(
-        '(validator 2.6.0) a condition on the unit filling the slot, checked against it as configured (its options\' gear and traits included, before the group\'s effects) and shown as an issue while false; units are still offered by role and `units`. E.g. a slot of two roles that units of the second may fill only with some gear: `{ "if": "unit.is(role:officer) or unit.has(equipment:signal-array)", "message": "…" }`'
+        '(validator 2.6.0) a condition on the unit filling the slot, checked against it as configured (its options\' gear and traits included, before the group\'s effects) and shown as an issue while false; units are still offered by role and `units`, though an app may hide units that none of their options could make meet it. E.g. a slot of two roles that units of the second may fill only with some gear: `{ "if": "unit.is(role:officer) or unit.has(equipment:signal-array)", "message": "…" }`'
     ),
 });
 
