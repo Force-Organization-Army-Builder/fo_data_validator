@@ -33,6 +33,7 @@ import type {
     ListRule,
     SlotOption,
     SlotSource,
+    SlotSources,
     SlotUnitEffect,
     SlotTagEffect,
     Slot,
@@ -53,6 +54,7 @@ import type {
     GearRef,
     GearSwap,
 } from '../types';
+import { slotSources } from './slot_sources';
 import { buildVocabulary, definedTraits, subTypeTags } from './vocabulary';
 
 /*
@@ -2130,15 +2132,63 @@ class Validator {
                     );
             }
         }
-        return [faction, ...picked].flatMap((r) => keys(r.units));
+        return [...new Set([faction, ...picked].flatMap((r) => keys(r.units)))];
     }
 
-    /* A slot's units (from its source, if any) and the effects on them */
+    /*
+     * The units a slot's sources offer, all entries together (`unchecked`
+     * when any entry names something not loaded), after checking each entry
+     * and its own `units`. With a list of sources (validator 2.8.0) each
+     * faction may be listed once, and a slot `unitIds` entry naming units of
+     * two entries is a warning: both may fill the slot.
+     */
+    private slotSourceUnits(
+        path: string,
+        source: SlotSources,
+        slotUnits: UnitSelectorOrRef | undefined,
+        scope: Scope
+    ): ReadonlyArray<string> | 'unchecked' {
+        const list = Array.isArray(source);
+        const entries = slotSources(source);
+        const at = (i: number) => (list ? `${path}/${i}` : path);
+
+        const seen = new Set<string>();
+        const offered = entries.map((entry, i) => {
+            if (seen.has(entry.faction))
+                this.report(
+                    at(i),
+                    `'${entry.faction}' is listed twice; list each faction once, with every sub-faction it brings in`
+                );
+            seen.add(entry.faction);
+            const units = this.sourceUnits(at(i), entry);
+            this.selector(at(i), entry.units, scope, units);
+            return { faction: entry.faction, units };
+        });
+        if (offered.some(({ units }) => units === 'unchecked'))
+            return 'unchecked';
+
+        if (list && slotUnits && typeof slotUnits !== 'string') {
+            for (const id of slotUnits.unitIds ?? []) {
+                const from = offered
+                    .filter(({ units }) => units.includes(id))
+                    .map(({ faction }) => faction);
+                if (from.length > 1)
+                    this.report(
+                        path.replace(/\/source$/, ''),
+                        `'${id}' is a unit of ${from.map((f) => `'${f}'`).join(' and ')}; any of them may fill the slot. To pick one, name it in that entry's \`units\` instead`,
+                        'warning'
+                    );
+            }
+        }
+        return offered.flatMap(({ units }) => units as ReadonlyArray<string>);
+    }
+
+    /* A slot's units (from its sources, if any) and the effects on them */
     private slotUnits(
         path: string,
         slot: {
             units?: UnitSelectorOrRef;
-            source?: SlotSource;
+            source?: SlotSources;
             effects?: Array<SlotUnitEffect>;
         },
         scope: Scope
@@ -2148,7 +2198,12 @@ class Validator {
                 path,
                 slot.units,
                 scope,
-                this.sourceUnits(`${path}/source`, slot.source)
+                this.slotSourceUnits(
+                    `${path}/source`,
+                    slot.source,
+                    slot.units,
+                    scope
+                )
             );
         else this.selector(path, slot.units, scope);
         slot.effects?.forEach((effect, i) =>

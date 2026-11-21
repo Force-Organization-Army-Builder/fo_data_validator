@@ -101,6 +101,8 @@ export type GroupListEffects = Infer<typeof S.GroupListEffectsSchema>;
 export type GroupEffect = Infer<typeof S.GroupEffectSchema>;
 export type Slot = Infer<typeof S.SlotSchema>;
 export type SlotSource = Infer<typeof S.SlotSourceSchema>;
+/** One slot source or a list of them (validator 2.8.0); `slotSources` gives the list */
+export type SlotSources = Infer<typeof S.SlotSourcesSchema>;
 /** A stat, special-rule or trait effect on a unit */
 export type UnitEffect = Infer<typeof S.UnitEffectSchema>;
 /** A unit effect or a slot-tag effect: what everything but a slot option may apply (validator 2.2.0) */

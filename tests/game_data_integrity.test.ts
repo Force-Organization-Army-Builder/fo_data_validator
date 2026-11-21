@@ -5,6 +5,7 @@ import path from 'node:path';
 import { formatDiagnostic } from '../src/expressions/diagnostics';
 import { readSource } from '../src/game_data/read_source';
 import { GroupTypeSchema } from '../src/game_data/schema';
+import { slotSources } from '../src/game_data/slot_sources';
 import {
     DataIssue,
     GameDataSet,
@@ -536,6 +537,89 @@ describe('slots filled from another faction', () => {
             };
         });
         assert.deepEqual(issues, []);
+    });
+});
+
+describe('slots filled from several factions', () => {
+    const levy = (set: GameDataSet) =>
+        set.factions[0].data.groups['mixed-levy'];
+    const entries = (set: GameDataSet, slot: number) => {
+        const source = levy(set).slots[slot].source;
+        assert.ok(Array.isArray(source));
+        return source;
+    };
+
+    it('reads one source or a list of them as a list', () => {
+        assert.deepEqual(slotSources(undefined), []);
+        assert.deepEqual(slotSources({ faction: 'field-army' }), [
+            { faction: 'field-army' },
+        ]);
+        assert.deepEqual(
+            slotSources([
+                { faction: 'field-army' },
+                { faction: 'clockwork-guild' },
+            ]),
+            [{ faction: 'field-army' }, { faction: 'clockwork-guild' }]
+        );
+    });
+
+    it("resolves the slot's unitIds against every entry, and an entry's against its own", async () => {
+        const issues = await issuesAfter((set) => {
+            // a Field Army unit, a Clockwork Guild one and a sub-faction's are all offered
+            levy(set).slots[0].units = {
+                unitIds: [
+                    'walker',
+                    'battle-construct',
+                    'veteran-squad',
+                    'constructs',
+                ],
+            };
+            // `walker` isn't a Clockwork Guild unit
+            entries(set, 1)[1].units = {
+                unitIds: ['siege-construct', 'walker'],
+            };
+        });
+        assert.deepEqual(issues, [
+            "error factions/field-army.json groups/mixed-levy/slots/0: unknown unit 'constructs'",
+            "error factions/field-army.json groups/mixed-levy/slots/1/source/1: unknown unit 'walker'",
+        ]);
+    });
+
+    it('warns when a slot unitIds entry names units of two entries', async () => {
+        const issues = await issuesAfter((set) => {
+            const guild = set.factions[1].data;
+            guild.units['walker'] = {
+                ...structuredClone(guild.units['battle-construct']),
+                id: 'walker',
+            };
+            levy(set).slots[0].units = { unitIds: ['walker'] };
+        });
+        assert.deepEqual(issues, [
+            "warning factions/field-army.json groups/mixed-levy/slots/0: 'walker' is a unit of 'field-army' and 'clockwork-guild'; any of them may fill the slot. To pick one, name it in that entry's `units` instead",
+        ]);
+    });
+
+    it('reports a faction listed twice and unknown entries by their place', async () => {
+        const issues = await issuesAfter((set) => {
+            levy(set).slots[0].source = [
+                { faction: 'field-army' },
+                { faction: 'clockwork-guil' },
+                { faction: 'field-army', subFactions: ['veterans'] },
+            ];
+        });
+        assert.deepEqual(issues, [
+            "error factions/field-army.json groups/mixed-levy/slots/0/source/1: unknown faction 'clockwork-guil' (did you mean 'clockwork-guild'?)",
+            "error factions/field-army.json groups/mixed-levy/slots/0/source/2: 'field-army' is listed twice; list each faction once, with every sub-faction it brings in",
+        ]);
+    });
+
+    it("checks an entry's units given as a named selector", async () => {
+        const issues = await issuesAfter((set) => {
+            entries(set, 1)[0].units = '@squadz';
+        });
+        assert.deepEqual(issues, [
+            "error factions/field-army.json groups/mixed-levy/slots/1/source/0: unknown selector 'squadz'",
+        ]);
     });
 });
 

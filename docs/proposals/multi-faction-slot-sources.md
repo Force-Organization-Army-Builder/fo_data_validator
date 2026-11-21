@@ -1,6 +1,6 @@
 # Proposal: slots filled from more than one faction
 
-Status: **proposal, not implemented.** Written against validator 2.7.0 and the Force Org app as of 2026-11-20. Recommends Option A for 2.8.0, high priority.
+Status: **Option A implemented in validator 2.8.0** (see `CHANGELOG.md`, the authoring guide and the data schema spec §7.1). One change from the draft below: the helper takes the `source` value, `slotSources(slot.source)`. The optional trait-replace lint in §6 was left out. The app changes (§7) and the open questions are still open. Written against validator 2.7.0 and the Force Org app as of 2026-11-20.
 
 A data source has an additional group (a detachment) whose slots may each be filled from either of two other factions, in any mix. A slot's `source` (§7.1, validator 1.3.0) names one faction, so the rule can't be modelled as written. This proposal covers the rule shape, today's workaround, what the app does with sourced slots, design options with example JSON, a recommendation, the checks the validator would add, and open questions. The examples use `examples/full` vocabulary (`field-army` with its Field Army trait, `clockwork-guild` with its Foundry trait). The host faction, `free-company` with a Free Company trait, is invented for the examples; the motivating rule is described generically.
 
@@ -193,7 +193,7 @@ The group gets a player choice of source ("this detachment is drawn from A / fro
 - **Data.** The object form stays valid with identical meaning, so every existing source passes unchanged. The list form is additive, so **`schemaVersion` stays 1**, as for every additive field so far.
 - **Older validators** reject an array `source` as a shape error. A source using the list form or per-entry `units` sets `"minValidatorVersion": "2.8.0"`, so an older validator says "update" instead (spec §2).
 - **Saved and shared lists** are unaffected: units already record their home (§3).
-- **Types.** `SlotSource` gains optional `units`. `Slot.source` and `AddedSlot.source` become `SlotSource | SlotSource[]`. A helper exported from the validator, `slotSources(slot): SlotSource[]`, gives consumers one normalised view.
+- **Types.** `SlotSource` gains optional `units`. `Slot.source` and `AddedSlot.source` become `SlotSource | SlotSource[]`. A helper exported from the validator, `slotSources(source): SlotSource[]`, gives consumers one normalised view.
 
 ## 6. Validation rules
 
