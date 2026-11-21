@@ -2,7 +2,7 @@
     "$schema": "../../schema/source-manifest.schema.json",
     "schemaVersion": 1,
     "expressionVersion": 1,
-    "minValidatorVersion": "2.8.0",
+    "minValidatorVersion": "2.9.0",
     "name": "Full coverage test source",
     "description": "A generic source that uses every part of the data schema. Test fixture; not a real game.",
     "disclaimer": "Test data only.",

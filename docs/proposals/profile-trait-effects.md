@@ -1,6 +1,6 @@
 # Proposal: trait effects on some profiles, and effects that add sub-types
 
-Status: **proposal, not implemented.** Written against validator 2.8.0 and the Force Org app as of 2026-11-20. Recommends Option A (`profiles` on a trait effect) for 2.9.0, high priority, and a sub-type effect (part 2) as a separate, later change.
+Status: **part 1, Option A, implemented in validator 2.9.0**, with the empty-filter warning (see `CHANGELOG.md`, the authoring guide and the data schema spec §5.2). Using `profile` in a filter-less trait effect's `when` keeps today's generic "'profile' isn't available here" error. Part 2 (sub-type effects) and the open questions are still open. Written against validator 2.8.0 and the Force Org app as of 2026-11-20.
 
 A data source has rules that give a trait to some models of a unit, not the whole unit. A trait effect has no profile filter, so today the whole unit gains the trait. A related gap is that no effect can give a model a sub-type (a profile or unit tag). This proposal takes both, with design options and example JSON, a recommendation, the checks the validator would add, and open questions. The examples use `examples/full` vocabulary: the `squad` unit has a `trooper` profile and a `sergeant` profile tagged Sergeant, and the game defines a Promoted trait. The motivating rules are described generically.
 

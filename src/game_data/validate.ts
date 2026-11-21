@@ -257,17 +257,19 @@ class Validator {
     }
 
     /*
-     * With game `subTypes`: a profile filter (`profiles` / `excludeProfiles`
-     * anywhere in a file) value that is neither a unit type id nor a sub-type
-     * is a warning. Filters match case-insensitively, as in the app.
+     * Every profile filter (`profiles` / `excludeProfiles` anywhere in a
+     * file): an empty `anyOf` (matches nothing) or `noneOf` (leaves nothing
+     * out) is a warning (validator 2.9.0). With game `subTypes`, a value that
+     * is neither a unit type id nor a sub-type is a warning too. Filters match
+     * case-insensitively, as in the app.
      */
     private profileFilters(path: string, data: unknown) {
-        const subTypes = this.subTypes;
-        if (!subTypes || typeof data !== 'object' || !data) return;
+        if (typeof data !== 'object' || !data) return;
         if (Array.isArray(data)) {
             data.forEach((d, i) => this.profileFilters(`${path}/${i}`, d));
             return;
         }
+        const subTypes = this.subTypes;
         const unitTypes = keys(this.set.game.data.unitTypes);
         for (const [key, value] of Object.entries(data)) {
             const at = path ? `${path}/${key}` : key;
@@ -275,6 +277,19 @@ class Validator {
                 (key === 'profiles' || key === 'excludeProfiles') &&
                 isProfileFilter(value)
             ) {
+                if (value.anyOf?.length === 0)
+                    this.report(
+                        at,
+                        'an empty anyOf matches no profile; leave it out to pick every profile',
+                        'warning'
+                    );
+                if (value.noneOf?.length === 0)
+                    this.report(
+                        at,
+                        'an empty noneOf leaves no profile out; leave it out',
+                        'warning'
+                    );
+                if (!subTypes) continue;
                 for (const v of [
                     ...(value.anyOf ?? []),
                     ...(value.noneOf ?? []),
@@ -1815,8 +1830,8 @@ class Validator {
             scopes = scopes.filter((s) => s !== 'profile');
         } else {
             this.traitEffect(path, effect);
-            // traits belong to the whole unit: no profile to look at
-            scopes = scopes.filter((s) => s !== 'profile');
+            // without `profiles` it changes the whole unit: no profile to look at
+            if (!effect.profiles) scopes = scopes.filter((s) => s !== 'profile');
         }
         this.condition(path, effect.when, scopes, scope.vocabulary);
     }

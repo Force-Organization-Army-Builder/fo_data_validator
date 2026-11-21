@@ -370,7 +370,7 @@ A special-rule effect can also take rules away (validator ≥2.5.0), for rules s
 - An effect only acts on the rules the unit holds at its step (see the order below). In a slot option, the last step, it sees every rule however the unit got it.
 - To offer such a change to each unit of a group as the player's choice, see [Slot options](#slot-options-benefits-for-tagged-slots). For a change every unit in the group gets, put the effect in the group's `effects`.
 
-A **trait effect** changes the unit's traits. Traits belong to the whole unit, so it has no profile filter, and its `when` can't use `profile`:
+A **trait effect** changes the unit's traits. Without `profiles` it changes the whole unit, and its `when` can't use `profile`:
 
 ```json
 { "kind": "trait", "add": ["Gun Line"] }
@@ -380,7 +380,16 @@ A **trait effect** changes the unit's traits. Traits belong to the whole unit, s
 
 `replace` removes any of `from` and adds `to` only if the unit had one of them ("models replace their X trait with Y").
 
-A **slot-tag effect** (validator ≥2.2.0) makes the slot that holds the unit count as having game slot tags: it offers those tags' slot options, and `slot.is(tag:…)` reads true. It tags the slot, not the unit, so like a trait effect it has no profile filter and its `when` can't use `profile`. `categories` limits which of the tag's slot options it offers (see [Slot options](#slot-options-benefits-for-tagged-slots)):
+With **`profiles`** (validator ≥2.9.0) it changes only the picked profiles' models, for "models with the Sergeant sub-type gain the Promoted trait". `add` gives each picked profile the trait as its own, and `remove` / `replace` take it from them. A trait the whole unit holds stays on the profiles not picked. Its `when` may then use `profile`, checked per profile, so a condition on the model's own traits goes there, since profile filters match types and tags, not traits:
+
+```json
+{ "kind": "trait", "profiles": { "anyOf": ["Sergeant"] }, "add": ["Promoted"],
+  "when": { "if": "profile.is(trait:shield)", "message": "Only a sergeant with a shield" } }
+```
+
+A trait on some profiles still counts for the unit: `unit.is(trait:promoted)`, selector `traits` and `count(trait:promoted)` find the squad, while `profile.is(trait:promoted)` is true only on the sergeant. Leave `profiles` out when the whole unit gains the trait; a filter that happens to pick every profile still gives it profile by profile.
+
+A **slot-tag effect** (validator ≥2.2.0) makes the slot that holds the unit count as having game slot tags: it offers those tags' slot options, and `slot.is(tag:…)` reads true. It tags the slot, not the unit, so it has no profile filter and its `when` can't use `profile`. `categories` limits which of the tag's slot options it offers (see [Slot options](#slot-options-benefits-for-tagged-slots)):
 
 ```json
 { "kind": "slotTag", "add": ["prime"] }
@@ -650,7 +659,7 @@ unit.has(weapon:cannon) ? 25 : 15              a number: cost of an option
 | unit `when`/`limit.max`/cost, composition block `max`/cost | `unit`, `slot`, `group`, `contingent`, `root`, `main`, `list` |
 | upgrade `when`/`min`/`max` | the unit's, plus `profile` when the upgrade has a `profileId` |
 | option `when`/`max`/cost, sub-choice values | `option`, plus an upgrade's |
-| stat / special-rule effect `when` | `profile`, `unit`, `slot`, `group`, `contingent`, `root`, `main`, `list` (trait and slot-tag effects: the same without `profile`) |
+| stat / special-rule effect `when` | `profile`, `unit`, `slot`, `group`, `contingent`, `root`, `main`, `list` (trait effects with `profiles`, validator ≥2.9.0, too; other trait effects and slot-tag effects: the same without `profile`) |
 | special rule `grants` | `rule`, `unit`, `slot`, `group`, `contingent`, `root`, `main`, `list` |
 | sub-faction `when`, sub-faction group `min`/`max` | `contingent`, `root`, `main`, `list` |
 | group type `min`/`max`, list rules | `main`, `list` (count rules limited to a contingent or group also see those and `root`) |
