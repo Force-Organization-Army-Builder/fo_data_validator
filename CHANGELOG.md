@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- **Docs: the order of a sub-faction's unit modifiers.** The data schema spec (§5.2, Order) and the authoring guide (Effects) now say a sub-faction's `unitModifiers` apply in the order the file lists them, and each modifier's `actions` in their own order. So an effect's `when` sees what came before it and nothing after it. `examples/full`'s veterans already depend on this: `sergeants-fine` reads the sergeant's Shield before `tower-shields` replaces it. Across several sub-factions the order isn't specified. No schema or check change.
+- **For the app:** play a sub-faction's unit modifiers and their actions in record order, conditional and unconditional effects alike, so a `when` sees only the modifiers before it.
+
 ## 2.9.0
 
 - **Trait effects on some profiles.** A trait effect may take `profiles`, the `ProfileFilter` stat and special-rule effects have. It is for "models with the Sergeant sub-type gain the Promoted trait": `{ "kind": "trait", "profiles": { "anyOf": ["Sergeant"] }, "add": ["Promoted"] }`.
