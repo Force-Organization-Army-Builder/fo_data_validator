@@ -93,7 +93,8 @@
             "name": "Assault Troops",
             "description": "Given to line troops while the list takes the offensive stance."
         },
-        "dug-in": { "id": "dug-in", "name": "Dug In" }
+        "dug-in": { "id": "dug-in", "name": "Dug In" },
+        "levy": { "id": "levy", "name": "Levy" }
     },
     "groupTypes": {
         "core": {

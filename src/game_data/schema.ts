@@ -304,9 +304,23 @@ export const SlotSourceSchema = z
             .describe(
                 "units of these sub-factions of `faction` may fill the slot too (`any` = every one loaded), whether or not the contingent took them; left out, only the faction's own units"
             ),
+        units: UnitSelectorOrRefSchema.optional().describe(
+            "(validator 2.8.0) only matching units of this faction (and its listed sub-factions) may fill the slot, as well as matching the slot's own `units`; its `unitIds` are this entry's units. E.g. `{ \"unitIds\": [\"battle-construct\"] }` for \"or only these units of B\""
+        ),
     })
     .describe(
         "Where a slot's units come from instead of the contingent. Units keep their own records (gear, rules, upgrades) but not their home sub-faction's unit modifiers. The slot's `units` selector picks among them, seeing only each unit's own traits; the group's `units` doesn't apply"
+    );
+
+export const SlotSourcesSchema = z
+    .union([
+        SlotSourceSchema,
+        z
+            .array(SlotSourceSchema)
+            .min(1, { error: 'a list of slot sources needs at least one' }),
+    ])
+    .describe(
+        'One faction the slot\'s units come from, or (validator 2.8.0) a list of them: the slot offers every entry\'s units, and each unit filling it may come from any entry, e.g. `[{ "faction": "field-army" }, { "faction": "clockwork-guild" }]` for "from A or B, in any combination". List each faction once. The slot\'s `units` applies to every entry; its `unitIds` may name any entry\'s units'
     );
 
 /*
@@ -341,9 +355,9 @@ const addedSlot = {
         .array(SlugSchema)
         .describe("the slot's role; with several the player picks one"),
     units: UnitSelectorOrRefSchema.optional().describe(
-        "only matching units may fill the slot; with a `source`, `unitIds` are the source's units"
+        "only matching units may fill the slot; with a `source`, `unitIds` are its units (any entry's, for a list of sources)"
     ),
-    source: SlotSourceSchema.optional(),
+    source: SlotSourcesSchema.optional(),
     effects: z.array(SlotUnitEffectSchema).optional(),
 };
 
@@ -1063,7 +1077,7 @@ export const SlotSchema = z.strictObject({
             "the slot may be added more than once, each copy holding one unit (a team's vehicles, optional slots); `max` left out = no limit"
         ),
     units: UnitSelectorOrRefSchema.optional().describe(
-        "only matching units may fill this slot; with a `source`, `unitIds` are the source's units"
+        "only matching units may fill this slot; with a `source`, `unitIds` are its units (any entry's, for a list of sources)"
     ),
     tagOptions: z
         .record(SlugSchema, TagOptionsSchema)
@@ -1071,7 +1085,7 @@ export const SlotSchema = z.strictObject({
         .describe(
             '(validator 2.2.0) tag id → which of that tag\'s slot options this slot offers, e.g. `{ "prime": { "categories": ["honour"] } }`; each key must be one of the slot\'s `tags`. A tag left out offers every option'
         ),
-    source: SlotSourceSchema.optional(),
+    source: SlotSourcesSchema.optional(),
     effects: z.array(SlotUnitEffectSchema).optional(),
     when: ConditionSchema.optional(),
     unitWhen: ConditionSchema.optional().describe(

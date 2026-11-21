@@ -912,6 +912,36 @@
             ],
             "requirementText": "Needs two line troop units in its Core Formation and a General"
         },
+        "mixed-levy": {
+            "id": "mixed-levy",
+            "name": "Mixed Levy",
+            "description": "Its units come from the Field Army or the Clockwork Guild, in any combination. Each unit's Field Army or Foundry trait becomes Levy.",
+            "type": "reserve",
+            "slots": [
+                {
+                    "roles": ["heavy"],
+                    "repeat": { "min": 1, "max": 2 },
+                    "source": [
+                        { "faction": "field-army", "subFactions": "any" },
+                        { "faction": "clockwork-guild" }
+                    ]
+                },
+                {
+                    "roles": ["support", "heavy"],
+                    "source": [
+                        { "faction": "field-army", "units": { "roles": ["support"] } },
+                        { "faction": "clockwork-guild", "units": { "unitIds": ["siege-construct"] } }
+                    ]
+                }
+            ],
+            "max": 1,
+            "effects": [
+                {
+                    "kind": "trait",
+                    "replace": { "from": ["Field Army", "Foundry"], "to": "Levy" }
+                }
+            ]
+        },
         "gun-line": {
             "id": "gun-line",
             "name": "Gun Line",

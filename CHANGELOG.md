@@ -1,7 +1,24 @@
 # Changelog
 
-## Unreleased
+## 2.8.0
 
+- **Slots filled from more than one faction.** A slot's `source` may be a non-empty list of `{ "faction", "subFactions"?, "units"? }` as well as one such object. The slot offers every entry's units, and each unit filling it may come from any entry. This is for "units come from faction A or faction B, in any combination". Example: `"source": [{ "faction": "field-army" }, { "faction": "clockwork-guild" }]`.
+    - **Where:** group slots, a slot option's `slot` effect (each slot a `count` adds takes the same list) and a special rule's `slots`.
+    - **Per-entry `units`** (new, on the object form too) narrows that entry only; its `unitIds` are that entry's units. The slot's `units` applies to every entry, and its `unitIds` may name any entry's units.
+    - **Changing the units:** one trait effect handles every entry, e.g. `{ "kind": "trait", "replace": { "from": ["Field Army", "Foundry"], "to": "Levy" } }`. Gate an effect on a faction's trait to change one entry's units only.
+    - **Why:** a group drawn from two factions used to be modelled as two copies of the group, one per faction, with `max` expressions subtracting each other, so the factions couldn't be mixed.
+    - Home sub-faction unit modifiers still don't come with a sourced unit.
+- **Checks.** Each entry is checked as a single source is, at `source/<index>`. New: a faction listed in two entries is an error; an entry's `unitIds` that aren't among that entry's units are an error; a slot `unitIds` entry naming units of two entries is a warning. An empty list is a shape error.
+- **Shape check messages.** In a union, a branch whose value has the wrong type outright no longer wins over a branch of the right type with several problems. A list of slot sources with a bad entry now reports that entry's problems instead of "expected object, received array".
+- **New exports:** `SlotSourcesSchema`, the `SlotSources` type (`SlotSource | SlotSource[]`) and `slotSources(source)`, which returns a slot's `source` as a list (empty when left out).
+- `examples/full`'s `mixed-levy` group draws from the Field Army (with every sub-faction) and the Clockwork Guild, with per-entry `units` on its second slot. The game gains a Levy trait, and the source declares `"minValidatorVersion": "2.8.0"`. The authoring guide ("Slots filled from another faction"), the data schema spec (§2, §7.1) and the README say so.
+- **For the app:**
+    - `Slot.source` and `AddedSlot.source` are now `SlotSource | SlotSource[]`. Read them through `slotSources`.
+    - Offer every entry's units for an empty sourced slot, each with its own home (`ListUnit.source` already records one per unit, so saved and shared lists don't change). Apply an entry's `units` to that entry's units only, and the slot's `units` to all.
+    - Show each candidate's faction when the slot has more than one entry.
+    - A placed unit whose home faction is no longer among the slot's entries is a slot issue.
+    - The data editor's slot source editor edits a list of entries.
+- `schemaVersion` stays 1 and `expressionVersion` stays 1; everything is additive. Data using the list form or per-entry `units` should set `"minValidatorVersion": "2.8.0"` in its manifest, and needs an app that supports them.
 - **Docs: offering units for a slot with `unitWhen`.** The data schema spec (§7), the authoring guide and the schema's description of `unitWhen` now allow an app to judge `unitWhen` optimistically when offering units. Gear, traits and rules that any of the unit's options could give count as held. A unit that fails even then can never qualify and may be hidden; one that could qualify may be marked with the message. A placed unit is still checked live. No schema or check change.
 
 ## 2.7.0

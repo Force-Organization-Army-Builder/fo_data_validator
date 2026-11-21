@@ -29,13 +29,15 @@ const join = (path: ReadonlyArray<PropertyKey>) =>
     path.map((part) => String(part)).join('/');
 
 /*
- * How far a union branch got: fewer problems is further, and on a tie a branch
- * whose value had the wrong type outright got less far than one of the right type
+ * How far a union branch got: a branch whose value had the wrong type outright
+ * got nowhere, so any branch of the right type beats it (a list of slot
+ * sources with a bad entry is about that entry, not "expected object"); among
+ * the rest, fewer problems is further
  */
 const distance = (branch: Array<Issue>) =>
     branch.length +
     (branch.every((i) => i.code === 'invalid_type' && i.path.length === 0)
-        ? 0.5
+        ? 1000
         : 0);
 
 /* The issues of a union's best branch: the one that got furthest */

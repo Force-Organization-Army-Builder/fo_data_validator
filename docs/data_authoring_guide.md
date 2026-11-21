@@ -497,10 +497,28 @@ Some rules add a slot that another faction's units, or units of other sub-factio
 ```
 
 - `source.faction` is any faction of the game, even one from another source. `subFactions` adds its sub-factions' units: `"any"` or a list of ids. Without it only the faction's own units are offered.
-- Prefer a selector that describes the rule (`exclude`, `roles`, `traits`) over a list of `unitIds`: new units then qualify without anyone editing your file. `unitIds` in a sourced slot name the source's units.
+- Prefer a selector that describes the rule (`exclude`, `roles`, `traits`) over a list of `unitIds`: new units then qualify without anyone editing your file. `unitIds` in a sourced slot name the source's units (any entry's, for a list).
 - The selector sees only the unit's own `traits`. The group's `units` doesn't apply to the slot; its `effects` do, then the slot's.
 - The unit keeps its own gear, rules and upgrades. Its home sub-faction's unit modifiers don't come with it.
 - Group `slots` take a `source` too (with `roles`, as usual).
+
+**From more than one faction** (validator 2.8.0). `source` may be a list. The slot offers every entry's units, and each unit filling it may come from any entry, so one copy of a slot can hold a Field Army unit and the next a Clockwork Guild unit. "Its units come from the Field Army or the Clockwork Guild, in any combination; each unit's Field Army or Foundry trait becomes Levy" (`mixed-levy` in `examples/full`):
+
+```json
+"slots": [
+  { "roles": ["heavy"], "repeat": { "min": 1, "max": 2 },
+    "source": [{ "faction": "field-army", "subFactions": "any" }, { "faction": "clockwork-guild" }] },
+  { "roles": ["support", "heavy"],
+    "source": [{ "faction": "field-army", "units": { "roles": ["support"] } },
+               { "faction": "clockwork-guild", "units": { "unitIds": ["siege-construct"] } }] }
+],
+"effects": [{ "kind": "trait", "replace": { "from": ["Field Army", "Foundry"], "to": "Levy" } }]
+```
+
+- An entry's own `units` narrows that faction only, and its `unitIds` name that entry's units. The slot's `units` applies to every entry, and its `unitIds` may name any entry's units.
+- List each faction once. A slot `unitIds` entry naming units of two entries is a warning, since either may fill the slot. Name it in one entry's `units` to pick one.
+- One trait effect handles every source: `replace` drops each `from` trait the unit holds and adds `to` only if it held one. To change one source's units only, gate the effect on that faction's trait (`when: unit.is(trait:foundry)`).
+- The same list form works in a slot option's `slot` effect and a special rule's `slots`. A list of one means the same as the object form.
 
 ### Selectors
 

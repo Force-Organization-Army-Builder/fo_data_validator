@@ -177,6 +177,8 @@ Data that uses a slot's `unitWhen`, a group's `addedSlotRoles` or a slot option'
 
 Data that uses a group's `listEffects` needs validator **2.7.0** or later, and an app that supports it.
 
+Data that gives a slot's `source` as a list, or `units` on a source entry, needs validator **2.8.0** or later, and an app that supports them.
+
 Data that declares `minValidatorVersion` needs validator **1.14.0** or later. From 1.14.0 every id, record key and `@selector` reference must be lowercase kebab-case.
 
 ## Releasing

@@ -109,6 +109,34 @@ describe('checkShapes', () => {
         assert.ok(issues.some((i) => i.startsWith('units/squad/cst: ')));
     });
 
+    it('takes one slot source or a non-empty list of them', async () => {
+        const all = await files();
+        const faction = all.find((f) => f.kind === 'Faction')!;
+        const groups = (
+            faction.data as {
+                groups: Record<string, { slots: Array<{ source?: unknown }> }>;
+            }
+        ).groups;
+        groups['mixed-levy'].slots[0].source = [];
+        groups['mixed-levy'].slots[1].source = [
+            { faction: 'field-army' },
+            { factio: 'clockwork-guild' },
+        ];
+        groups['armoured-spearhead'].slots[1].source = {
+            faction: 'clockwork-guild',
+            units: { unitIds: ['battle-construct'] },
+        };
+        assert.deepEqual(
+            checkShapes(all).map((i) => `${i.path}: ${i.message}`),
+            [
+                'groups/mixed-levy/slots/0/source: a list of slot sources needs at least one',
+                // about the bad entry, not "expected an object"
+                "groups/mixed-levy/slots/1/source/1: missing required property 'faction'",
+                "groups/mixed-levy/slots/1/source/1/factio: unknown property 'factio' (misspelt, or a field from a newer validator release)",
+            ]
+        );
+    });
+
     it('reports a missing field', async () => {
         const issues = await issuesAfter('carrier', (u) => delete u.modelCount);
         assert.deepEqual(issues, [
