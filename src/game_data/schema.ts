@@ -251,11 +251,21 @@ export const SpecialRuleEffectSchema = z
 export const TraitEffectSchema = z
     .strictObject({
         kind: z.literal('trait'),
-        add: z.array(z.string()).optional().describe('traits the unit gains'),
+        profiles: ProfileFilterSchema.optional().describe(
+            "(validator 2.9.0) the profiles whose models the effect changes: `add` gives the traits to each picked profile, and `remove` / `replace` take them from it (a trait of the whole unit stays on the profiles not picked). Its `when` may then use `profile`, checked per profile. Left out, the effect changes the whole unit"
+        ),
+        add: z
+            .array(z.string())
+            .optional()
+            .describe(
+                'traits the unit gains (with `profiles`, each picked profile)'
+            ),
         remove: z
             .array(z.string())
             .optional()
-            .describe('traits the unit loses, if it has them'),
+            .describe(
+                'traits the unit loses, if it has them (with `profiles`, each picked profile)'
+            ),
         replace: z
             .strictObject({
                 from: z.array(z.string()),
@@ -263,12 +273,12 @@ export const TraitEffectSchema = z
             })
             .optional()
             .describe(
-                'the unit loses any of `from` and, only if it had one, gains `to`'
+                'the unit (with `profiles`, each picked profile) loses any of `from` and, only if it had one, gains `to`'
             ),
         when: ConditionSchema.optional(),
     })
     .describe(
-        "changes the unit's traits (traits belong to the whole unit, so there is no profile filter); traits match as case-insensitive text"
+        "changes the unit's traits, or with `profiles` (validator 2.9.0) only some profiles' traits; a unit holds a trait when it or any of its profiles does. Traits match as case-insensitive text"
     );
 
 export const SlotTagEffectSchema = z

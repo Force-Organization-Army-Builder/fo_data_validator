@@ -185,9 +185,20 @@
         },
         "sergeants-fine": {
             "id": "sergeants-fine",
-            "name": "Sergeants may take a fine weapon",
+            "name": "Sergeants may take a fine weapon; those with a shield are Promoted",
             "selector": { "profiles": { "anyOf": ["Sergeant"] } },
-            "actions": [{ "kind": "addUpgrade", "upgradeId": "fine" }]
+            "actions": [
+                { "kind": "addUpgrade", "upgradeId": "fine" },
+                {
+                    "kind": "trait",
+                    "profiles": { "anyOf": ["Sergeant"] },
+                    "add": ["Promoted"],
+                    "when": {
+                        "if": "profile.is(trait:shield)",
+                        "message": "Only a sergeant with a shield"
+                    }
+                }
+            ]
         },
         "steadfast-line": {
             "id": "steadfast-line",

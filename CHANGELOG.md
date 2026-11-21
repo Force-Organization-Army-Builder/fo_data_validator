@@ -1,5 +1,26 @@
 # Changelog
 
+## 2.9.0
+
+- **Trait effects on some profiles.** A trait effect may take `profiles`, the `ProfileFilter` stat and special-rule effects have. It is for "models with the Sergeant sub-type gain the Promoted trait": `{ "kind": "trait", "profiles": { "anyOf": ["Sergeant"] }, "add": ["Promoted"] }`.
+    - `add` gives each picked profile the traits as its own; the unit's traits don't change.
+    - `remove` / `replace` take them from the picked profiles. A trait of the whole unit moves down to the profiles not picked, so only the picked models lose it.
+    - Its `when` may use `profile`, checked per profile, e.g. `profile.is(trait:shield)` for models holding a trait.
+    - Without `profiles` nothing changes: the effect acts on the whole unit and its `when` has no `profile`.
+    - Reading is unchanged: a profile's traits count for its unit (validator 1.11.0) in `unit.is(trait:…)`, selector `traits` and `count(trait:…)`, and `profile.is(trait:…)` is true only on the picked profiles.
+    - **Why:** a trait effect had no profile filter, so "some models gain a trait" gave it to the whole unit.
+- **Empty profile filters.** An empty `anyOf` (matches no profile) or `noneOf` (leaves none out) on any `ProfileFilter` (effects, selectors, `excludeProfiles`) is a warning, whether or not the game has `subTypes`.
+- `examples/full`'s `sergeants-fine` modifier (veterans) gives Promoted to a squad's shield-bearing sergeant only, and the source declares `"minValidatorVersion": "2.9.0"`. The authoring guide (Effects), the data schema spec (§5, §5.2, §7), the expression spec's scope table, the README and the proposal (`docs/proposals/profile-trait-effects.md`) say so.
+- **For the app:**
+    - Apply a trait effect with `profiles` like a stat or special-rule effect: the filter picks profiles, `when` is checked per profile, and the effect changes the picked profiles' own traits.
+        - `add` goes on each picked profile.
+        - `remove` / `replace` drop a profile's own trait; a unit trait moves to the profiles not picked.
+    - Do this wherever trait effects apply: unit-modifier actions (`resolve.ts`), option, group, slot and slot-option effects, list choice values and `listEffects` (`playEffects`).
+    - Give a trait effect with `profiles` the `profile` scope in its `when` (`TRAIT_EFFECT_SCOPES` applies only without `profiles`).
+    - Display and reading already handle profile-only traits ("Promoted (Sergeant)").
+    - The data editor's trait effect editor shows the profile filter.
+- `schemaVersion` stays 1 and `expressionVersion` stays 1; everything is additive. Data using `profiles` on a trait effect should set `"minValidatorVersion": "2.9.0"` in its manifest, and needs an app that supports it.
+
 ## 2.8.0
 
 - **Slots filled from more than one faction.** A slot's `source` may be a non-empty list of `{ "faction", "subFactions"?, "units"? }` as well as one such object. The slot offers every entry's units, and each unit filling it may come from any entry. This is for "units come from faction A or faction B, in any combination". Example: `"source": [{ "faction": "field-army" }, { "faction": "clockwork-guild" }]`.

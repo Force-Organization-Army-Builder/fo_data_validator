@@ -420,6 +420,31 @@ describe('traits', () => {
         ]);
     });
 
+    it('lets a trait effect with profiles read the profile in its condition', async () => {
+        const issues = await issuesAfter((set) => {
+            const gunLine = set.factions[0].data.groups['gun-line'];
+            gunLine.effects = [
+                {
+                    kind: 'trait',
+                    profiles: { anyOf: ['sergeant'] },
+                    add: ['Promoted'],
+                    when: {
+                        if: 'profile.is(trait:shield)',
+                        message: 'Shield-bearing sergeants only',
+                    },
+                },
+                {
+                    kind: 'trait',
+                    profiles: { anyOf: ['sergent'] },
+                    replace: { from: ['Disciplined'], to: 'Veterans' },
+                },
+            ];
+        });
+        assert.deepEqual(issues, [
+            "warning factions/field-army.json groups/gun-line/effects/1/profiles: 'sergent' matches no unit type or sub-type (did you mean 'sergeant'?)",
+        ]);
+    });
+
     it('checks the rest of a group effect like any effect', async () => {
         const issues = await issuesAfter((set) => {
             const gunLine = set.factions[0].data.groups['gun-line'];
@@ -537,6 +562,34 @@ describe('slots filled from another faction', () => {
             };
         });
         assert.deepEqual(issues, []);
+    });
+});
+
+describe('profile filters', () => {
+    it('warns about an empty anyOf or noneOf, with or without game sub-types', async () => {
+        const issues = await issuesAfter((set) => {
+            delete set.game.data.subTypes;
+            const gunLine = set.factions[0].data.groups['gun-line'];
+            gunLine.effects = [
+                {
+                    kind: 'trait',
+                    profiles: { anyOf: [] },
+                    add: ['Promoted'],
+                },
+                {
+                    kind: 'stat',
+                    profiles: { noneOf: [] },
+                    changes: [{ stat: 'move', op: 'add', value: 1 }],
+                },
+            ];
+            gunLine.slots[0].units = { profiles: { anyOf: [], noneOf: [] } };
+        });
+        assert.deepEqual(issues, [
+            'warning factions/field-army.json groups/gun-line/slots/0/units/profiles: an empty anyOf matches no profile; leave it out to pick every profile',
+            'warning factions/field-army.json groups/gun-line/slots/0/units/profiles: an empty noneOf leaves no profile out; leave it out',
+            'warning factions/field-army.json groups/gun-line/effects/0/profiles: an empty anyOf matches no profile; leave it out to pick every profile',
+            'warning factions/field-army.json groups/gun-line/effects/1/profiles: an empty noneOf leaves no profile out; leave it out',
+        ]);
     });
 });
 

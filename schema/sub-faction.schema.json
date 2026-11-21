@@ -10,31 +10,31 @@
             "$ref": "#/definitions/__schema2"
         },
         "weapons": {
-            "$ref": "#/definitions/__schema102"
+            "$ref": "#/definitions/__schema103"
         },
         "equipment": {
-            "$ref": "#/definitions/__schema106"
-        },
-        "upgrades": {
             "$ref": "#/definitions/__schema107"
         },
+        "upgrades": {
+            "$ref": "#/definitions/__schema108"
+        },
         "specialRules": {
-            "$ref": "#/definitions/__schema109"
+            "$ref": "#/definitions/__schema110"
         },
         "groups": {
-            "$ref": "#/definitions/__schema136"
+            "$ref": "#/definitions/__schema137"
         },
         "selectors": {
-            "$ref": "#/definitions/__schema155"
-        },
-        "slotOptions": {
             "$ref": "#/definitions/__schema156"
         },
+        "slotOptions": {
+            "$ref": "#/definitions/__schema157"
+        },
         "subChoices": {
-            "$ref": "#/definitions/__schema170"
+            "$ref": "#/definitions/__schema171"
         },
         "listRules": {
-            "$ref": "#/definitions/__schema173"
+            "$ref": "#/definitions/__schema174"
         },
         "name": {
             "$ref": "#/definitions/__schema4"
@@ -46,22 +46,22 @@
             "$ref": "#/definitions/__schema3"
         },
         "version": {
-            "$ref": "#/definitions/__schema193"
-        },
-        "parent": {
             "$ref": "#/definitions/__schema194"
         },
-        "group": {
+        "parent": {
             "$ref": "#/definitions/__schema195"
         },
-        "when": {
+        "group": {
             "$ref": "#/definitions/__schema196"
         },
-        "overrides": {
+        "when": {
             "$ref": "#/definitions/__schema197"
         },
+        "overrides": {
+            "$ref": "#/definitions/__schema198"
+        },
         "unitModifiers": {
-            "$ref": "#/definitions/__schema199"
+            "$ref": "#/definitions/__schema200"
         }
     },
     "required": [
@@ -317,16 +317,16 @@
                                     "$ref": "#/definitions/__schema3"
                                 },
                                 "perModel": {
-                                    "$ref": "#/definitions/__schema94"
+                                    "$ref": "#/definitions/__schema95"
                                 },
                                 "excludeProfiles": {
-                                    "$ref": "#/definitions/__schema96"
-                                },
-                                "profileId": {
                                     "$ref": "#/definitions/__schema97"
                                 },
-                                "note": {
+                                "profileId": {
                                     "$ref": "#/definitions/__schema98"
+                                },
+                                "note": {
+                                    "$ref": "#/definitions/__schema99"
                                 }
                             },
                             "required": [
@@ -341,7 +341,7 @@
                         "description": "the unit's traits (e.g. a faction trait), matched by `trait:` references and selector `traits` as case-insensitive text; effects may add or remove some",
                         "allOf": [
                             {
-                                "$ref": "#/definitions/__schema100"
+                                "$ref": "#/definitions/__schema101"
                             }
                         ]
                     },
@@ -357,7 +357,7 @@
                         "description": "how many of this unit a scope may hold, e.g. unique characters",
                         "allOf": [
                             {
-                                "$ref": "#/definitions/__schema101"
+                                "$ref": "#/definitions/__schema102"
                             }
                         ]
                     }
@@ -1095,7 +1095,7 @@
                         "$ref": "#/definitions/__schema79"
                     },
                     {
-                        "$ref": "#/definitions/__schema88"
+                        "$ref": "#/definitions/__schema89"
                     }
                 ]
             }
@@ -1304,66 +1304,77 @@
                 "kind": {
                     "$ref": "#/definitions/__schema80"
                 },
-                "add": {
+                "profiles": {
                     "$ref": "#/definitions/__schema81"
                 },
+                "add": {
+                    "$ref": "#/definitions/__schema82"
+                },
                 "remove": {
-                    "$ref": "#/definitions/__schema83"
+                    "$ref": "#/definitions/__schema84"
                 },
                 "replace": {
-                    "$ref": "#/definitions/__schema85"
+                    "$ref": "#/definitions/__schema86"
                 },
                 "when": {
-                    "$ref": "#/definitions/__schema87"
+                    "$ref": "#/definitions/__schema88"
                 }
             },
             "required": [
                 "kind"
             ],
             "additionalProperties": false,
-            "description": "changes the unit's traits (traits belong to the whole unit, so there is no profile filter); traits match as case-insensitive text"
+            "description": "changes the unit's traits, or with `profiles` (validator 2.9.0) only some profiles' traits; a unit holds a trait when it or any of its profiles does. Traits match as case-insensitive text"
         },
         "__schema80": {
             "type": "string",
             "const": "trait"
         },
         "__schema81": {
-            "description": "traits the unit gains",
+            "description": "(validator 2.9.0) the profiles whose models the effect changes: `add` gives the traits to each picked profile, and `remove` / `replace` take them from it (a trait of the whole unit stays on the profiles not picked). Its `when` may then use `profile`, checked per profile. Left out, the effect changes the whole unit",
             "allOf": [
                 {
-                    "$ref": "#/definitions/__schema82"
+                    "$ref": "#/definitions/__schema34"
                 }
             ]
         },
         "__schema82": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
+            "description": "traits the unit gains (with `profiles`, each picked profile)",
+            "allOf": [
+                {
+                    "$ref": "#/definitions/__schema83"
+                }
+            ]
         },
         "__schema83": {
-            "description": "traits the unit loses, if it has them",
-            "allOf": [
-                {
-                    "$ref": "#/definitions/__schema84"
-                }
-            ]
-        },
-        "__schema84": {
             "type": "array",
             "items": {
                 "type": "string"
             }
         },
-        "__schema85": {
-            "description": "the unit loses any of `from` and, only if it had one, gains `to`",
+        "__schema84": {
+            "description": "traits the unit loses, if it has them (with `profiles`, each picked profile)",
             "allOf": [
                 {
-                    "$ref": "#/definitions/__schema86"
+                    "$ref": "#/definitions/__schema85"
                 }
             ]
         },
+        "__schema85": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
         "__schema86": {
+            "description": "the unit (with `profiles`, each picked profile) loses any of `from` and, only if it had one, gains `to`",
+            "allOf": [
+                {
+                    "$ref": "#/definitions/__schema87"
+                }
+            ]
+        },
+        "__schema87": {
             "type": "object",
             "properties": {
                 "from": {
@@ -1382,27 +1393,27 @@
             ],
             "additionalProperties": false
         },
-        "__schema87": {
+        "__schema88": {
             "allOf": [
                 {
                     "$ref": "#/definitions/__schema50"
                 }
             ]
         },
-        "__schema88": {
+        "__schema89": {
             "type": "object",
             "properties": {
                 "kind": {
-                    "$ref": "#/definitions/__schema89"
-                },
-                "add": {
                     "$ref": "#/definitions/__schema90"
                 },
-                "categories": {
+                "add": {
                     "$ref": "#/definitions/__schema91"
                 },
+                "categories": {
+                    "$ref": "#/definitions/__schema92"
+                },
                 "when": {
-                    "$ref": "#/definitions/__schema93"
+                    "$ref": "#/definitions/__schema94"
                 }
             },
             "required": [
@@ -1412,50 +1423,50 @@
             "additionalProperties": false,
             "description": "(validator 2.2.0) the slot that holds the unit counts as having these slot tags, so it offers their slot options and `slot.is(tag:…)` reads true. It tags the slot, not the unit, so there is no profile filter; in place before slot options are offered. Not allowed in a slot option's `effects`"
         },
-        "__schema89": {
+        "__schema90": {
             "type": "string",
             "const": "slotTag"
         },
-        "__schema90": {
+        "__schema91": {
             "type": "array",
             "items": {
                 "$ref": "#/definitions/__schema3"
             },
             "description": "game-declared slot tags the slot holding the unit counts as having, e.g. `[\"prime\"]`"
         },
-        "__schema91": {
+        "__schema92": {
             "description": "for the tags it adds, only slot options of these `category`s are offered, e.g. `[\"honour\"]`; left out, every option of the tag. Combined with the slot's own `tagOptions` and other slotTag effects on the same tag, only options every restriction allows are offered",
             "allOf": [
                 {
-                    "$ref": "#/definitions/__schema92"
+                    "$ref": "#/definitions/__schema93"
                 }
             ]
         },
-        "__schema92": {
+        "__schema93": {
             "type": "array",
             "items": {
                 "$ref": "#/definitions/__schema3"
             }
         },
-        "__schema93": {
+        "__schema94": {
             "allOf": [
                 {
                     "$ref": "#/definitions/__schema50"
                 }
             ]
         },
-        "__schema94": {
+        "__schema95": {
             "description": "carried by every model, so the amount follows the unit's model count",
             "allOf": [
                 {
-                    "$ref": "#/definitions/__schema95"
+                    "$ref": "#/definitions/__schema96"
                 }
             ]
         },
-        "__schema95": {
+        "__schema96": {
             "type": "boolean"
         },
-        "__schema96": {
+        "__schema97": {
             "description": "with `perModel`: profiles that don't carry it",
             "allOf": [
                 {
@@ -1463,7 +1474,7 @@
                 }
             ]
         },
-        "__schema97": {
+        "__schema98": {
             "description": "the profile that carries it; left out, the unit at large does. With `perModel`: one for each model of that profile",
             "allOf": [
                 {
@@ -1471,24 +1482,24 @@
                 }
             ]
         },
-        "__schema98": {
+        "__schema99": {
             "description": "a short note shown next to this gear wherever the unit's gear is listed (validator 1.11.0), e.g. a mount: `Turret mounted`. Display only: gear is still matched, counted and swapped by kind and id",
             "allOf": [
                 {
-                    "$ref": "#/definitions/__schema99"
+                    "$ref": "#/definitions/__schema100"
                 }
             ]
         },
-        "__schema99": {
+        "__schema100": {
             "type": "string"
         },
-        "__schema100": {
+        "__schema101": {
             "type": "array",
             "items": {
                 "type": "string"
             }
         },
-        "__schema101": {
+        "__schema102": {
             "type": "object",
             "properties": {
                 "max": {
@@ -1512,7 +1523,7 @@
             ],
             "additionalProperties": false
         },
-        "__schema102": {
+        "__schema103": {
             "type": "object",
             "propertyNames": {
                 "$ref": "#/definitions/__schema3"
@@ -1530,10 +1541,10 @@
                         "$ref": "#/definitions/__schema3"
                     },
                     "template": {
-                        "$ref": "#/definitions/__schema103"
+                        "$ref": "#/definitions/__schema104"
                     },
                     "profiles": {
-                        "$ref": "#/definitions/__schema104"
+                        "$ref": "#/definitions/__schema105"
                     }
                 },
                 "required": [
@@ -1545,7 +1556,7 @@
                 "additionalProperties": false
             }
         },
-        "__schema103": {
+        "__schema104": {
             "description": "a weapon stat template id from the game, e.g. `ranged` / `melee`: the template of every profile without its own `template`",
             "allOf": [
                 {
@@ -1553,7 +1564,7 @@
                 }
             ]
         },
-        "__schema104": {
+        "__schema105": {
             "type": "array",
             "items": {
                 "type": "object",
@@ -1575,7 +1586,7 @@
                             "$ref": "#/definitions/__schema3"
                         },
                         "additionalProperties": {
-                            "$ref": "#/definitions/__schema105"
+                            "$ref": "#/definitions/__schema106"
                         },
                         "description": "stat id → value, checked against the profile's template"
                     },
@@ -1599,10 +1610,10 @@
                 "additionalProperties": false
             }
         },
-        "__schema105": {
+        "__schema106": {
             "type": "string"
         },
-        "__schema106": {
+        "__schema107": {
             "type": "object",
             "propertyNames": {
                 "$ref": "#/definitions/__schema3"
@@ -1626,10 +1637,10 @@
                         "type": "object",
                         "properties": {
                             "template": {
-                                "$ref": "#/definitions/__schema103"
+                                "$ref": "#/definitions/__schema104"
                             },
                             "profiles": {
-                                "$ref": "#/definitions/__schema104"
+                                "$ref": "#/definitions/__schema105"
                             }
                         },
                         "required": [
@@ -1648,7 +1659,7 @@
                 "additionalProperties": false
             }
         },
-        "__schema107": {
+        "__schema108": {
             "type": "object",
             "propertyNames": {
                 "$ref": "#/definitions/__schema3"
@@ -1702,7 +1713,7 @@
                         "$ref": "#/definitions/__schema53"
                     },
                     "options": {
-                        "$ref": "#/definitions/__schema108"
+                        "$ref": "#/definitions/__schema109"
                     }
                 },
                 "required": [
@@ -1715,7 +1726,7 @@
                 "description": "A faction-level upgrade units point at instead of repeating it"
             }
         },
-        "__schema108": {
+        "__schema109": {
             "type": "object",
             "propertyNames": {
                 "$ref": "#/definitions/__schema3"
@@ -1724,7 +1735,7 @@
                 "$ref": "#/definitions/__schema57"
             }
         },
-        "__schema109": {
+        "__schema110": {
             "type": "object",
             "propertyNames": {
                 "$ref": "#/definitions/__schema3"
@@ -1748,7 +1759,7 @@
                         "description": "the rule takes a value, e.g. Ambush (X)",
                         "allOf": [
                             {
-                                "$ref": "#/definitions/__schema110"
+                                "$ref": "#/definitions/__schema111"
                             }
                         ]
                     },
@@ -1756,7 +1767,7 @@
                         "description": "the value a configurable rule has when a selection gives none",
                         "allOf": [
                             {
-                                "$ref": "#/definitions/__schema111"
+                                "$ref": "#/definitions/__schema112"
                             }
                         ]
                     },
@@ -1772,7 +1783,7 @@
                         "description": "slots each unit with the rule adds to its group, e.g. one filled from another faction",
                         "allOf": [
                             {
-                                "$ref": "#/definitions/__schema112"
+                                "$ref": "#/definitions/__schema113"
                             }
                         ]
                     }
@@ -1785,28 +1796,28 @@
                 "additionalProperties": false
             }
         },
-        "__schema110": {
+        "__schema111": {
             "type": "boolean"
         },
-        "__schema111": {
+        "__schema112": {
             "type": "string"
         },
-        "__schema112": {
+        "__schema113": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
                     "roleChoices": {
-                        "$ref": "#/definitions/__schema113"
-                    },
-                    "units": {
                         "$ref": "#/definitions/__schema114"
                     },
+                    "units": {
+                        "$ref": "#/definitions/__schema115"
+                    },
                     "source": {
-                        "$ref": "#/definitions/__schema126"
+                        "$ref": "#/definitions/__schema127"
                     },
                     "effects": {
-                        "$ref": "#/definitions/__schema134"
+                        "$ref": "#/definitions/__schema135"
                     }
                 },
                 "required": [
@@ -1816,25 +1827,25 @@
                 "description": "A slot a mechanic adds to a group"
             }
         },
-        "__schema113": {
+        "__schema114": {
             "type": "array",
             "items": {
                 "$ref": "#/definitions/__schema3"
             },
             "description": "the slot's role; with several the player picks one"
         },
-        "__schema114": {
+        "__schema115": {
             "description": "only matching units may fill the slot; with a `source`, `unitIds` are its units (any entry's, for a list of sources)",
             "allOf": [
                 {
-                    "$ref": "#/definitions/__schema115"
+                    "$ref": "#/definitions/__schema116"
                 }
             ]
         },
-        "__schema115": {
+        "__schema116": {
             "anyOf": [
                 {
-                    "$ref": "#/definitions/__schema116"
+                    "$ref": "#/definitions/__schema117"
                 },
                 {
                     "type": "string",
@@ -1843,36 +1854,30 @@
                 }
             ]
         },
-        "__schema116": {
+        "__schema117": {
             "type": "object",
             "properties": {
                 "unitIds": {
-                    "$ref": "#/definitions/__schema117"
-                },
-                "roles": {
                     "$ref": "#/definitions/__schema118"
                 },
-                "traits": {
+                "roles": {
                     "$ref": "#/definitions/__schema119"
                 },
-                "profiles": {
-                    "$ref": "#/definitions/__schema121"
+                "traits": {
+                    "$ref": "#/definitions/__schema120"
                 },
-                "specialRules": {
+                "profiles": {
                     "$ref": "#/definitions/__schema122"
                 },
+                "specialRules": {
+                    "$ref": "#/definitions/__schema123"
+                },
                 "exclude": {
-                    "$ref": "#/definitions/__schema124"
+                    "$ref": "#/definitions/__schema125"
                 }
             },
             "additionalProperties": false,
             "description": "Picks units by id, role, trait and profile type/tags; left out, a field matches every unit"
-        },
-        "__schema117": {
-            "type": "array",
-            "items": {
-                "$ref": "#/definitions/__schema3"
-            }
         },
         "__schema118": {
             "type": "array",
@@ -1881,20 +1886,26 @@
             }
         },
         "__schema119": {
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/__schema3"
+            }
+        },
+        "__schema120": {
             "description": "a unit matches when it has any of these traits, matched as case-insensitive text",
             "allOf": [
                 {
-                    "$ref": "#/definitions/__schema120"
+                    "$ref": "#/definitions/__schema121"
                 }
             ]
         },
-        "__schema120": {
+        "__schema121": {
             "type": "array",
             "items": {
                 "type": "string"
             }
         },
-        "__schema121": {
+        "__schema122": {
             "description": "a unit matches when one of its profiles does (or the unit itself, if it has no profiles)",
             "allOf": [
                 {
@@ -1902,82 +1913,82 @@
                 }
             ]
         },
-        "__schema122": {
+        "__schema123": {
             "description": "(validator 2.5.0) special rule ids: a unit matches when it or one of its profiles holds any of them, with any value",
             "allOf": [
                 {
-                    "$ref": "#/definitions/__schema123"
+                    "$ref": "#/definitions/__schema124"
                 }
             ]
         },
-        "__schema123": {
+        "__schema124": {
             "type": "array",
             "items": {
                 "$ref": "#/definitions/__schema3"
             }
         },
-        "__schema124": {
+        "__schema125": {
             "description": "a unit that matches any of these does not match the selector",
             "allOf": [
                 {
-                    "$ref": "#/definitions/__schema125"
+                    "$ref": "#/definitions/__schema126"
                 }
             ]
         },
-        "__schema125": {
+        "__schema126": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
                     "unitIds": {
-                        "$ref": "#/definitions/__schema117"
-                    },
-                    "roles": {
                         "$ref": "#/definitions/__schema118"
                     },
-                    "traits": {
+                    "roles": {
                         "$ref": "#/definitions/__schema119"
                     },
+                    "traits": {
+                        "$ref": "#/definitions/__schema120"
+                    },
                     "profiles": {
-                        "$ref": "#/definitions/__schema121"
+                        "$ref": "#/definitions/__schema122"
                     },
                     "specialRules": {
-                        "$ref": "#/definitions/__schema122"
+                        "$ref": "#/definitions/__schema123"
                     }
                 },
                 "additionalProperties": false,
                 "description": "Units to leave out, matched like a selector (its fields all apply); e.g. `{ \"profiles\": { \"anyOf\": [\"Unique\"] } }` leaves out every unit with a Unique profile"
             }
         },
-        "__schema126": {
+        "__schema127": {
             "allOf": [
                 {
-                    "$ref": "#/definitions/__schema127"
+                    "$ref": "#/definitions/__schema128"
                 }
             ]
         },
-        "__schema127": {
+        "__schema128": {
             "anyOf": [
                 {
-                    "$ref": "#/definitions/__schema128"
+                    "$ref": "#/definitions/__schema129"
                 },
                 {
-                    "$ref": "#/definitions/__schema133"
+                    "$ref": "#/definitions/__schema134"
                 }
             ],
             "description": "One faction the slot's units come from, or (validator 2.8.0) a list of them: the slot offers every entry's units, and each unit filling it may come from any entry, e.g. `[{ \"faction\": \"field-army\" }, { \"faction\": \"clockwork-guild\" }]` for \"from A or B, in any combination\". List each faction once. The slot's `units` applies to every entry; its `unitIds` may name any entry's units"
         },
-        "__schema128": {
+        "__schema129": {
             "type": "object",
             "properties": {
                 "faction": {
-                    "$ref": "#/definitions/__schema129"
-                },
-                "subFactions": {
                     "$ref": "#/definitions/__schema130"
                 },
+                "subFactions": {
+                    "$ref": "#/definitions/__schema131"
+                },
                 "units": {
-                    "$ref": "#/definitions/__schema132"
+                    "$ref": "#/definitions/__schema133"
                 }
             },
             "required": [
@@ -1986,7 +1997,7 @@
             "additionalProperties": false,
             "description": "Where a slot's units come from instead of the contingent. Units keep their own records (gear, rules, upgrades) but not their home sub-faction's unit modifiers. The slot's `units` selector picks among them, seeing only each unit's own traits; the group's `units` doesn't apply"
         },
-        "__schema129": {
+        "__schema130": {
             "description": "a faction of the same game, possibly from another source; may be the contingent's own",
             "allOf": [
                 {
@@ -1994,15 +2005,15 @@
                 }
             ]
         },
-        "__schema130": {
+        "__schema131": {
             "description": "units of these sub-factions of `faction` may fill the slot too (`any` = every one loaded), whether or not the contingent took them; left out, only the faction's own units",
             "allOf": [
                 {
-                    "$ref": "#/definitions/__schema131"
+                    "$ref": "#/definitions/__schema132"
                 }
             ]
         },
-        "__schema131": {
+        "__schema132": {
             "anyOf": [
                 {
                     "type": "string",
@@ -2016,28 +2027,28 @@
                 }
             ]
         },
-        "__schema132": {
+        "__schema133": {
             "description": "(validator 2.8.0) only matching units of this faction (and its listed sub-factions) may fill the slot, as well as matching the slot's own `units`; its `unitIds` are this entry's units. E.g. `{ \"unitIds\": [\"battle-construct\"] }` for \"or only these units of B\"",
             "allOf": [
                 {
-                    "$ref": "#/definitions/__schema115"
+                    "$ref": "#/definitions/__schema116"
                 }
             ]
         },
-        "__schema133": {
+        "__schema134": {
             "minItems": 1,
             "type": "array",
             "items": {
-                "$ref": "#/definitions/__schema128"
-            }
-        },
-        "__schema134": {
-            "type": "array",
-            "items": {
-                "$ref": "#/definitions/__schema135"
+                "$ref": "#/definitions/__schema129"
             }
         },
         "__schema135": {
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/__schema136"
+            }
+        },
+        "__schema136": {
             "oneOf": [
                 {
                     "$ref": "#/definitions/__schema63"
@@ -2049,12 +2060,12 @@
                     "$ref": "#/definitions/__schema79"
                 },
                 {
-                    "$ref": "#/definitions/__schema88"
+                    "$ref": "#/definitions/__schema89"
                 }
             ],
             "description": "applied to the unit filling the slot, after the group's effects, e.g. replacing a borrowed unit's faction trait"
         },
-        "__schema136": {
+        "__schema137": {
             "type": "object",
             "propertyNames": {
                 "$ref": "#/definitions/__schema3"
@@ -2095,7 +2106,7 @@
                                     "description": "game-declared slot tags, e.g. `prime`",
                                     "allOf": [
                                         {
-                                            "$ref": "#/definitions/__schema137"
+                                            "$ref": "#/definitions/__schema138"
                                         }
                                     ]
                                 },
@@ -2103,7 +2114,7 @@
                                     "description": "must be filled for the list to be valid (compulsory slots)",
                                     "allOf": [
                                         {
-                                            "$ref": "#/definitions/__schema138"
+                                            "$ref": "#/definitions/__schema139"
                                         }
                                     ]
                                 },
@@ -2111,7 +2122,7 @@
                                     "description": "the slot may be added more than once, each copy holding one unit (a team's vehicles, optional slots); `max` left out = no limit",
                                     "allOf": [
                                         {
-                                            "$ref": "#/definitions/__schema139"
+                                            "$ref": "#/definitions/__schema140"
                                         }
                                     ]
                                 },
@@ -2119,7 +2130,7 @@
                                     "description": "only matching units may fill this slot; with a `source`, `unitIds` are its units (any entry's, for a list of sources)",
                                     "allOf": [
                                         {
-                                            "$ref": "#/definitions/__schema115"
+                                            "$ref": "#/definitions/__schema116"
                                         }
                                     ]
                                 },
@@ -2127,21 +2138,21 @@
                                     "description": "(validator 2.2.0) tag id → which of that tag's slot options this slot offers, e.g. `{ \"prime\": { \"categories\": [\"honour\"] } }`; each key must be one of the slot's `tags`. A tag left out offers every option",
                                     "allOf": [
                                         {
-                                            "$ref": "#/definitions/__schema140"
+                                            "$ref": "#/definitions/__schema141"
                                         }
                                     ]
                                 },
                                 "source": {
                                     "allOf": [
                                         {
-                                            "$ref": "#/definitions/__schema127"
+                                            "$ref": "#/definitions/__schema128"
                                         }
                                     ]
                                 },
                                 "effects": {
                                     "type": "array",
                                     "items": {
-                                        "$ref": "#/definitions/__schema135"
+                                        "$ref": "#/definitions/__schema136"
                                     }
                                 },
                                 "when": {
@@ -2170,7 +2181,7 @@
                         "description": "only matching units may fill any slot, including slots a mechanic adds, except slots with a `source`",
                         "allOf": [
                             {
-                                "$ref": "#/definitions/__schema115"
+                                "$ref": "#/definitions/__schema116"
                             }
                         ]
                     },
@@ -2178,7 +2189,7 @@
                         "description": "all must be met",
                         "allOf": [
                             {
-                                "$ref": "#/definitions/__schema142"
+                                "$ref": "#/definitions/__schema143"
                             }
                         ]
                     },
@@ -2186,7 +2197,7 @@
                         "description": "shown when a requirement isn't met",
                         "allOf": [
                             {
-                                "$ref": "#/definitions/__schema146"
+                                "$ref": "#/definitions/__schema147"
                             }
                         ]
                     },
@@ -2225,7 +2236,7 @@
                         "description": "applied to every unit in the group, e.g. \"Every unit in this group gains the Gun Line trait\"",
                         "allOf": [
                             {
-                                "$ref": "#/definitions/__schema147"
+                                "$ref": "#/definitions/__schema148"
                             }
                         ]
                     },
@@ -2233,7 +2244,7 @@
                         "description": "(validator 2.6.0) the only roles the `slot` effects of slot options picked in this group's slots may add: each effect's `roleChoices` is narrowed to them, and an option left with none isn't offered. `[]` = no option that adds a slot; left out, no limit",
                         "allOf": [
                             {
-                                "$ref": "#/definitions/__schema148"
+                                "$ref": "#/definitions/__schema149"
                             }
                         ]
                     },
@@ -2241,7 +2252,7 @@
                         "description": "(validator 2.7.0) while the group is in the list, each entry's `effects` apply to the matching units in reach, wherever they are, e.g. `[{ \"units\": \"@vehicles\", \"effects\": [{ \"kind\": \"specialRule\", \"rule\": { \"id\": \"fearless\" } }] }]`",
                         "allOf": [
                             {
-                                "$ref": "#/definitions/__schema149"
+                                "$ref": "#/definitions/__schema150"
                             }
                         ]
                     }
@@ -2255,16 +2266,16 @@
                 "additionalProperties": false
             }
         },
-        "__schema137": {
+        "__schema138": {
             "type": "array",
             "items": {
                 "$ref": "#/definitions/__schema3"
             }
         },
-        "__schema138": {
+        "__schema139": {
             "type": "boolean"
         },
-        "__schema139": {
+        "__schema140": {
             "type": "object",
             "properties": {
                 "min": {
@@ -2284,7 +2295,7 @@
             },
             "additionalProperties": false
         },
-        "__schema140": {
+        "__schema141": {
             "type": "object",
             "propertyNames": {
                 "$ref": "#/definitions/__schema3"
@@ -2293,7 +2304,7 @@
                 "type": "object",
                 "properties": {
                     "categories": {
-                        "$ref": "#/definitions/__schema141"
+                        "$ref": "#/definitions/__schema142"
                     }
                 },
                 "required": [
@@ -2303,26 +2314,26 @@
                 "description": "Limits the slot options a slot offers for one of its tags (validator 2.2.0). Where several restrictions apply to one tag on one slot (this and slotTag effects' `categories`), only options every one of them allows are offered"
             }
         },
-        "__schema141": {
+        "__schema142": {
             "type": "array",
             "items": {
                 "$ref": "#/definitions/__schema3"
             },
             "description": "only slot options with one of these `category`s are offered for the tag"
         },
-        "__schema142": {
+        "__schema143": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
                     "units": {
-                        "$ref": "#/definitions/__schema115"
+                        "$ref": "#/definitions/__schema116"
                     },
                     "count": {
-                        "$ref": "#/definitions/__schema143"
+                        "$ref": "#/definitions/__schema144"
                     },
                     "scope": {
-                        "$ref": "#/definitions/__schema144"
+                        "$ref": "#/definitions/__schema145"
                     }
                 },
                 "required": [
@@ -2332,7 +2343,7 @@
                 "description": "units the list must already hold before the group can be taken"
             }
         },
-        "__schema143": {
+        "__schema144": {
             "description": "matching units needed; left out = 1",
             "allOf": [
                 {
@@ -2340,25 +2351,25 @@
                 }
             ]
         },
-        "__schema144": {
+        "__schema145": {
             "description": "where they're counted: the group's contingent outside it (default) or its root group",
             "allOf": [
                 {
-                    "$ref": "#/definitions/__schema145"
+                    "$ref": "#/definitions/__schema146"
                 }
             ]
         },
-        "__schema145": {
+        "__schema146": {
             "type": "string",
             "enum": [
                 "contingent",
                 "root"
             ]
         },
-        "__schema146": {
+        "__schema147": {
             "type": "string"
         },
-        "__schema147": {
+        "__schema148": {
             "type": "array",
             "items": {
                 "oneOf": [
@@ -2372,31 +2383,31 @@
                         "$ref": "#/definitions/__schema79"
                     },
                     {
-                        "$ref": "#/definitions/__schema88"
+                        "$ref": "#/definitions/__schema89"
                     }
                 ],
                 "description": "applied to every unit in the group, including units in slots added later"
             }
         },
-        "__schema148": {
+        "__schema149": {
             "type": "array",
             "items": {
                 "$ref": "#/definitions/__schema3"
             }
         },
-        "__schema149": {
+        "__schema150": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
                     "units": {
-                        "$ref": "#/definitions/__schema150"
-                    },
-                    "scope": {
                         "$ref": "#/definitions/__schema151"
                     },
+                    "scope": {
+                        "$ref": "#/definitions/__schema152"
+                    },
                     "effects": {
-                        "$ref": "#/definitions/__schema153"
+                        "$ref": "#/definitions/__schema154"
                     }
                 },
                 "required": [
@@ -2406,37 +2417,37 @@
                 "description": "(validator 2.7.0) Effects a group gives units outside it, e.g. \"every Walker in a list with this group gains Fearless\""
             }
         },
-        "__schema150": {
+        "__schema151": {
             "description": "the units `effects` apply to, seen with their own traits and sub-faction modifiers; left out = every unit in reach",
             "allOf": [
                 {
-                    "$ref": "#/definitions/__schema115"
-                }
-            ]
-        },
-        "__schema151": {
-            "description": "which units are in reach: `list` (the default) = every unit in the list, in every contingent, allies included; `contingent` = the units in the group's contingent",
-            "allOf": [
-                {
-                    "$ref": "#/definitions/__schema152"
+                    "$ref": "#/definitions/__schema116"
                 }
             ]
         },
         "__schema152": {
+            "description": "which units are in reach: `list` (the default) = every unit in the list, in every contingent, allies included; `contingent` = the units in the group's contingent",
+            "allOf": [
+                {
+                    "$ref": "#/definitions/__schema153"
+                }
+            ]
+        },
+        "__schema153": {
             "type": "string",
             "enum": [
                 "list",
                 "contingent"
             ]
         },
-        "__schema153": {
+        "__schema154": {
             "type": "array",
             "items": {
-                "$ref": "#/definitions/__schema154"
+                "$ref": "#/definitions/__schema155"
             },
             "description": "stat, special-rule, trait and slot-tag effects"
         },
-        "__schema154": {
+        "__schema155": {
             "oneOf": [
                 {
                     "$ref": "#/definitions/__schema63"
@@ -2448,40 +2459,10 @@
                     "$ref": "#/definitions/__schema79"
                 },
                 {
-                    "$ref": "#/definitions/__schema88"
+                    "$ref": "#/definitions/__schema89"
                 }
             ],
             "description": "applied to every matching unit in reach while the group is in the list, right after list choice values; an effect's `when` sees the unit's own slot and group, not this group's"
-        },
-        "__schema155": {
-            "type": "object",
-            "propertyNames": {
-                "$ref": "#/definitions/__schema3"
-            },
-            "additionalProperties": {
-                "type": "object",
-                "properties": {
-                    "name": {
-                        "$ref": "#/definitions/__schema4"
-                    },
-                    "description": {
-                        "$ref": "#/definitions/__schema5"
-                    },
-                    "id": {
-                        "$ref": "#/definitions/__schema3"
-                    },
-                    "match": {
-                        "$ref": "#/definitions/__schema116"
-                    }
-                },
-                "required": [
-                    "name",
-                    "id",
-                    "match"
-                ],
-                "additionalProperties": false,
-                "description": "A selector with a name, referenced as `@id` from expressions and selector fields"
-            }
         },
         "__schema156": {
             "type": "object",
@@ -2500,29 +2481,59 @@
                     "id": {
                         "$ref": "#/definitions/__schema3"
                     },
-                    "text": {
-                        "$ref": "#/definitions/__schema157"
+                    "match": {
+                        "$ref": "#/definitions/__schema117"
+                    }
+                },
+                "required": [
+                    "name",
+                    "id",
+                    "match"
+                ],
+                "additionalProperties": false,
+                "description": "A selector with a name, referenced as `@id` from expressions and selector fields"
+            }
+        },
+        "__schema157": {
+            "type": "object",
+            "propertyNames": {
+                "$ref": "#/definitions/__schema3"
+            },
+            "additionalProperties": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "$ref": "#/definitions/__schema4"
                     },
-                    "slotTag": {
+                    "description": {
+                        "$ref": "#/definitions/__schema5"
+                    },
+                    "id": {
+                        "$ref": "#/definitions/__schema3"
+                    },
+                    "text": {
                         "$ref": "#/definitions/__schema158"
                     },
-                    "category": {
+                    "slotTag": {
                         "$ref": "#/definitions/__schema159"
                     },
-                    "slotRoles": {
+                    "category": {
                         "$ref": "#/definitions/__schema160"
                     },
-                    "units": {
-                        "$ref": "#/definitions/__schema162"
+                    "slotRoles": {
+                        "$ref": "#/definitions/__schema161"
                     },
-                    "cost": {
+                    "units": {
                         "$ref": "#/definitions/__schema163"
                     },
-                    "effects": {
+                    "cost": {
                         "$ref": "#/definitions/__schema164"
                     },
+                    "effects": {
+                        "$ref": "#/definitions/__schema165"
+                    },
                     "when": {
-                        "$ref": "#/definitions/__schema169"
+                        "$ref": "#/definitions/__schema170"
                     }
                 },
                 "required": [
@@ -2535,10 +2546,10 @@
                 "description": "A choice made for a slot with the option's tag, applying its effects to the unit in the slot (and the group), e.g. special benefits or enhancements. One option per tag per slot."
             }
         },
-        "__schema157": {
+        "__schema158": {
             "type": "string"
         },
-        "__schema158": {
+        "__schema159": {
             "description": "offered on slots with this tag",
             "allOf": [
                 {
@@ -2546,7 +2557,7 @@
                 }
             ]
         },
-        "__schema159": {
+        "__schema160": {
             "description": "(validator 2.2.0) what kind of option this is among its tag's, e.g. `honour`; a slot's `tagOptions` and a slotTag effect's `categories` offer only options of the categories they name",
             "allOf": [
                 {
@@ -2554,29 +2565,29 @@
                 }
             ]
         },
-        "__schema160": {
+        "__schema161": {
             "description": "only offered on slots of these roles; left out = any role",
             "allOf": [
                 {
-                    "$ref": "#/definitions/__schema161"
+                    "$ref": "#/definitions/__schema162"
                 }
             ]
         },
-        "__schema161": {
+        "__schema162": {
             "type": "array",
             "items": {
                 "$ref": "#/definitions/__schema3"
             }
         },
-        "__schema162": {
+        "__schema163": {
             "description": "only offered on slots whose unit matches, seen as it stands before slot-option effects (its traits from option and group effects included), e.g. `{ \"traits\": [\"Field Army\"] }` for an option only Field Army units may take; left out = any unit",
             "allOf": [
                 {
-                    "$ref": "#/definitions/__schema115"
+                    "$ref": "#/definitions/__schema116"
                 }
             ]
         },
-        "__schema163": {
+        "__schema164": {
             "description": "added to the cost of the unit in the slot",
             "allOf": [
                 {
@@ -2584,7 +2595,7 @@
                 }
             ]
         },
-        "__schema164": {
+        "__schema165": {
             "type": "array",
             "items": {
                 "oneOf": [
@@ -2601,22 +2612,22 @@
                         "type": "object",
                         "properties": {
                             "kind": {
-                                "$ref": "#/definitions/__schema165"
+                                "$ref": "#/definitions/__schema166"
                             },
                             "roleChoices": {
-                                "$ref": "#/definitions/__schema113"
-                            },
-                            "units": {
                                 "$ref": "#/definitions/__schema114"
                             },
+                            "units": {
+                                "$ref": "#/definitions/__schema115"
+                            },
                             "source": {
-                                "$ref": "#/definitions/__schema126"
+                                "$ref": "#/definitions/__schema127"
                             },
                             "effects": {
-                                "$ref": "#/definitions/__schema134"
+                                "$ref": "#/definitions/__schema135"
                             },
                             "count": {
-                                "$ref": "#/definitions/__schema166"
+                                "$ref": "#/definitions/__schema167"
                             }
                         },
                         "required": [
@@ -2630,10 +2641,10 @@
                         "type": "object",
                         "properties": {
                             "kind": {
-                                "$ref": "#/definitions/__schema167"
+                                "$ref": "#/definitions/__schema168"
                             },
                             "roles": {
-                                "$ref": "#/definitions/__schema168"
+                                "$ref": "#/definitions/__schema169"
                             }
                         },
                         "required": [
@@ -2646,11 +2657,11 @@
                 ]
             }
         },
-        "__schema165": {
+        "__schema166": {
             "type": "string",
             "const": "slot"
         },
-        "__schema166": {
+        "__schema167": {
             "description": "how many such slots the option adds to the group (default 1), each holding its own unit (validator 2.4.0); with several `roleChoices` the player picks one role, which all of them take, e.g. `{ \"kind\": \"slot\", \"roleChoices\": [\"support\"], \"count\": 3 }`",
             "allOf": [
                 {
@@ -2658,17 +2669,17 @@
                 }
             ]
         },
-        "__schema167": {
+        "__schema168": {
             "type": "string",
             "const": "allowedRoles"
         },
-        "__schema168": {
+        "__schema169": {
             "type": "array",
             "items": {
                 "$ref": "#/definitions/__schema3"
             }
         },
-        "__schema169": {
+        "__schema170": {
             "description": "(validator 2.6.0) only offered while true, seeing the unit as its `units` does; a pick whose `when` turns false is an issue. E.g. `{ \"if\": \"group.is(group:gun-line)\", \"message\": \"Only in a Gun Line\" }`",
             "allOf": [
                 {
@@ -2676,7 +2687,7 @@
                 }
             ]
         },
-        "__schema170": {
+        "__schema171": {
             "type": "object",
             "propertyNames": {
                 "$ref": "#/definitions/__schema3"
@@ -2694,7 +2705,7 @@
                         "$ref": "#/definitions/__schema3"
                     },
                     "values": {
-                        "$ref": "#/definitions/__schema171"
+                        "$ref": "#/definitions/__schema172"
                     },
                     "default": {
                         "$ref": "#/definitions/__schema3"
@@ -2710,7 +2721,7 @@
                 "description": "A choice made alongside an option, defined once and shared by every option that offers it"
             }
         },
-        "__schema171": {
+        "__schema172": {
             "type": "object",
             "propertyNames": {
                 "$ref": "#/definitions/__schema3"
@@ -2731,7 +2742,7 @@
                         "description": "resource id → multiplier for the option's cost, e.g. a turret mount `{ \"points\": 3 }`",
                         "allOf": [
                             {
-                                "$ref": "#/definitions/__schema172"
+                                "$ref": "#/definitions/__schema173"
                             }
                         ]
                     },
@@ -2751,7 +2762,7 @@
                 "additionalProperties": false
             }
         },
-        "__schema172": {
+        "__schema173": {
             "type": "object",
             "propertyNames": {
                 "$ref": "#/definitions/__schema3"
@@ -2760,15 +2771,15 @@
                 "type": "number"
             }
         },
-        "__schema173": {
+        "__schema174": {
             "description": "list rules that apply to contingents using this faction (or sub-faction), e.g. a rule about this faction's own traits",
             "allOf": [
                 {
-                    "$ref": "#/definitions/__schema174"
+                    "$ref": "#/definitions/__schema175"
                 }
             ]
         },
-        "__schema174": {
+        "__schema175": {
             "type": "object",
             "propertyNames": {
                 "$ref": "#/definitions/__schema3"
@@ -2779,7 +2790,7 @@
                         "type": "object",
                         "properties": {
                             "kind": {
-                                "$ref": "#/definitions/__schema175"
+                                "$ref": "#/definitions/__schema176"
                             },
                             "id": {
                                 "$ref": "#/definitions/__schema3"
@@ -2788,16 +2799,16 @@
                                 "$ref": "#/definitions/__schema3"
                             },
                             "units": {
-                                "$ref": "#/definitions/__schema176"
-                            },
-                            "contingentTypes": {
                                 "$ref": "#/definitions/__schema177"
                             },
+                            "contingentTypes": {
+                                "$ref": "#/definitions/__schema178"
+                            },
                             "max": {
-                                "$ref": "#/definitions/__schema179"
+                                "$ref": "#/definitions/__schema180"
                             },
                             "message": {
-                                "$ref": "#/definitions/__schema180"
+                                "$ref": "#/definitions/__schema181"
                             }
                         },
                         "required": [
@@ -2814,28 +2825,28 @@
                         "type": "object",
                         "properties": {
                             "kind": {
-                                "$ref": "#/definitions/__schema181"
+                                "$ref": "#/definitions/__schema182"
                             },
                             "id": {
                                 "$ref": "#/definitions/__schema3"
                             },
                             "units": {
-                                "$ref": "#/definitions/__schema182"
-                            },
-                            "groupTypes": {
                                 "$ref": "#/definitions/__schema183"
                             },
-                            "scope": {
+                            "groupTypes": {
                                 "$ref": "#/definitions/__schema184"
                             },
-                            "min": {
+                            "scope": {
                                 "$ref": "#/definitions/__schema185"
                             },
-                            "max": {
+                            "min": {
                                 "$ref": "#/definitions/__schema186"
                             },
-                            "message": {
+                            "max": {
                                 "$ref": "#/definitions/__schema187"
+                            },
+                            "message": {
+                                "$ref": "#/definitions/__schema188"
                             }
                         },
                         "required": [
@@ -2851,16 +2862,16 @@
                         "type": "object",
                         "properties": {
                             "kind": {
-                                "$ref": "#/definitions/__schema188"
+                                "$ref": "#/definitions/__schema189"
                             },
                             "id": {
                                 "$ref": "#/definitions/__schema3"
                             },
                             "scope": {
-                                "$ref": "#/definitions/__schema189"
+                                "$ref": "#/definitions/__schema190"
                             },
                             "groupTypes": {
-                                "$ref": "#/definitions/__schema191"
+                                "$ref": "#/definitions/__schema192"
                             },
                             "when": {
                                 "$ref": "#/definitions/__schema50"
@@ -2877,33 +2888,33 @@
                 ]
             }
         },
-        "__schema175": {
+        "__schema176": {
             "type": "string",
             "const": "resourceCap"
         },
-        "__schema176": {
+        "__schema177": {
             "description": "count only these units; left out = every unit",
             "allOf": [
                 {
-                    "$ref": "#/definitions/__schema115"
-                }
-            ]
-        },
-        "__schema177": {
-            "description": "count only units in contingents whose root group is one of these types",
-            "allOf": [
-                {
-                    "$ref": "#/definitions/__schema178"
+                    "$ref": "#/definitions/__schema116"
                 }
             ]
         },
         "__schema178": {
+            "description": "count only units in contingents whose root group is one of these types",
+            "allOf": [
+                {
+                    "$ref": "#/definitions/__schema179"
+                }
+            ]
+        },
+        "__schema179": {
             "type": "array",
             "items": {
                 "$ref": "#/definitions/__schema3"
             }
         },
-        "__schema179": {
+        "__schema180": {
             "anyOf": [
                 {
                     "type": "object",
@@ -2938,39 +2949,32 @@
                 }
             ]
         },
-        "__schema180": {
+        "__schema181": {
             "type": "string"
         },
-        "__schema181": {
+        "__schema182": {
             "type": "string",
             "const": "count"
         },
-        "__schema182": {
+        "__schema183": {
             "allOf": [
                 {
-                    "$ref": "#/definitions/__schema115"
+                    "$ref": "#/definitions/__schema116"
                 }
             ]
         },
-        "__schema183": {
+        "__schema184": {
             "type": "array",
             "items": {
                 "$ref": "#/definitions/__schema3"
             }
         },
-        "__schema184": {
+        "__schema185": {
             "type": "string",
             "enum": [
                 "group",
                 "contingent",
                 "list"
-            ]
-        },
-        "__schema185": {
-            "allOf": [
-                {
-                    "$ref": "#/definitions/__schema22"
-                }
             ]
         },
         "__schema186": {
@@ -2981,45 +2985,52 @@
             ]
         },
         "__schema187": {
-            "type": "string"
-        },
-        "__schema188": {
-            "type": "string",
-            "const": "expression"
-        },
-        "__schema189": {
-            "description": "`list` (default): the condition is checked once for the whole list. `group`: checked once for each group (of the listed `groupTypes`, or any) with `group`, `contingent`, `root`, `main` and `list` available; the message is reported for each group that fails",
             "allOf": [
                 {
-                    "$ref": "#/definitions/__schema190"
+                    "$ref": "#/definitions/__schema22"
                 }
             ]
         },
+        "__schema188": {
+            "type": "string"
+        },
+        "__schema189": {
+            "type": "string",
+            "const": "expression"
+        },
         "__schema190": {
+            "description": "`list` (default): the condition is checked once for the whole list. `group`: checked once for each group (of the listed `groupTypes`, or any) with `group`, `contingent`, `root`, `main` and `list` available; the message is reported for each group that fails",
+            "allOf": [
+                {
+                    "$ref": "#/definitions/__schema191"
+                }
+            ]
+        },
+        "__schema191": {
             "type": "string",
             "enum": [
                 "list",
                 "group"
             ]
         },
-        "__schema191": {
+        "__schema192": {
             "description": "with `scope: \"group\"`: only groups of these types",
             "allOf": [
                 {
-                    "$ref": "#/definitions/__schema192"
+                    "$ref": "#/definitions/__schema193"
                 }
             ]
         },
-        "__schema192": {
+        "__schema193": {
             "type": "array",
             "items": {
                 "$ref": "#/definitions/__schema3"
             }
         },
-        "__schema193": {
+        "__schema194": {
             "type": "string"
         },
-        "__schema194": {
+        "__schema195": {
             "type": "object",
             "properties": {
                 "faction": {
@@ -3035,7 +3046,7 @@
             ],
             "additionalProperties": false
         },
-        "__schema195": {
+        "__schema196": {
             "description": "one of the parent's `subFactionGroups`; left out, the `default` group. Sub-factions that can be taken together (different groups, or one group whose `max` may exceed 1) must not define the same record differently",
             "allOf": [
                 {
@@ -3043,7 +3054,7 @@
                 }
             ]
         },
-        "__schema196": {
+        "__schema197": {
             "description": "when the sub-faction may be taken, checked for the contingent it is taken for. Expressions may use `contingent`, `root`, `main` and `list`, e.g. `choice(stance) == defensive` or `main.is(subfaction:x)`",
             "allOf": [
                 {
@@ -3051,15 +3062,15 @@
                 }
             ]
         },
-        "__schema197": {
+        "__schema198": {
             "description": "records that intentionally replace the parent's (same kind and id); any other collision is an error",
             "allOf": [
                 {
-                    "$ref": "#/definitions/__schema198"
+                    "$ref": "#/definitions/__schema199"
                 }
             ]
         },
-        "__schema198": {
+        "__schema199": {
             "type": "array",
             "items": {
                 "type": "object",
@@ -3090,7 +3101,7 @@
                 "additionalProperties": false
             }
         },
-        "__schema199": {
+        "__schema200": {
             "type": "object",
             "propertyNames": {
                 "$ref": "#/definitions/__schema3"
@@ -3108,10 +3119,10 @@
                         "$ref": "#/definitions/__schema3"
                     },
                     "selector": {
-                        "$ref": "#/definitions/__schema115"
+                        "$ref": "#/definitions/__schema116"
                     },
                     "actions": {
-                        "$ref": "#/definitions/__schema200"
+                        "$ref": "#/definitions/__schema201"
                     }
                 },
                 "required": [
@@ -3124,7 +3135,7 @@
                 "description": "A sub-faction rule applied to every unit of the parent (and sub-faction) it selects"
             }
         },
-        "__schema200": {
+        "__schema201": {
             "type": "array",
             "items": {
                 "oneOf": [
@@ -3149,10 +3160,10 @@
                         "type": "object",
                         "properties": {
                             "kind": {
-                                "$ref": "#/definitions/__schema201"
+                                "$ref": "#/definitions/__schema202"
                             },
                             "message": {
-                                "$ref": "#/definitions/__schema202"
+                                "$ref": "#/definitions/__schema203"
                             }
                         },
                         "required": [
@@ -3172,16 +3183,16 @@
                         "$ref": "#/definitions/__schema79"
                     },
                     {
-                        "$ref": "#/definitions/__schema88"
+                        "$ref": "#/definitions/__schema89"
                     }
                 ]
             }
         },
-        "__schema201": {
+        "__schema202": {
             "type": "string",
             "const": "unavailable"
         },
-        "__schema202": {
+        "__schema203": {
             "type": "string"
         }
     },

@@ -157,7 +157,7 @@ A field sees its own subject and everything containing it.
 | Upgrade `when` / `min` / `max` | `profile` (with `profileId`), `unit`, `slot`, `group`, `contingent`, `root`, `main`, `list` |
 | Option `when` / `max` / `cost` | `option`, plus everything an upgrade sees |
 | Stat / special-rule effect `when` | `profile`, `unit`, `slot`, `group`, `contingent`, `root`, `main`, `list` |
-| Trait effect `when` | as a stat effect's, without `profile` |
+| Trait effect `when` | as a stat effect's; without `profiles` (validator 2.9.0), without `profile` |
 | Special rule `grants` | `rule`, `unit`, `slot`, `group`, `contingent`, `root`, `main`, `list` |
 | Sub-faction `when`, sub-faction group `min` / `max` | `contingent`, `root`, `main`, `list`: the contingent the sub-faction is taken for |
 | Expression list rule with `scope: "group"` | `group`, `contingent`, `root`, `main`, `list` |
