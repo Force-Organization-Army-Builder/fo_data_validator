@@ -50,7 +50,7 @@ my-data/
 ```
 
 - `provides` lists whole games: one `GameSystem` file plus its `Faction` and `SubFaction` files. Paths are relative to the manifest. A file that isn't listed isn't loaded.
-- `extends` adds factions or sub-factions to a game another source provides, instead of `provides`: `{ "game": "full-game", "versions": ">=1.0.0 <2.0.0", "factions": [...], "subFactions": [...] }`. Validate with `fo-validate <base source> <extension source>`.
+- `extends` adds factions or sub-factions to a game another source provides, instead of `provides`: `{ "game": "sample-skirmish", "versions": ">=1.0.0 <2.0.0", "factions": [...], "subFactions": [...] }`. Validate with `fo-validate <base source> <extension source>`.
 - `examples` (example lists) is accepted but not yet checked.
 - `schemaVersion` is `1`: the version of the data format. `expressionVersion` is `1`: the version of the expression language your expressions are written for. Both only go up when a change would break existing data, and Force Org refuses a source whose version is newer than it understands (with a message to update the app). A missing `expressionVersion` is read as `1` with a warning, so always write it.
 - `minValidatorVersion` (optional, e.g. `"1.14.0"`) is the oldest validator release your source needs. New fields arrive in minor releases (the changelog says which release added each), so when you start using one, set this to that release: someone on an older validator then gets "this source needs validator 1.15.0 or newer, but this is 1.14.0; update" instead of a list of unknown properties. Only use it for features from 1.14.0 or later. Validators 1.13 and older don't know the field and reject it as an unknown property, so leave it out until you need it.

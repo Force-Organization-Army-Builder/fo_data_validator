@@ -4,7 +4,7 @@
     "version": "1.0.0",
     "name": "Field Army",
     "description": "Uses every faction-level record kind.",
-    "game": { "id": "full-game", "versions": ">=1.0.0 <2.0.0" },
+    "game": { "id": "sample-skirmish", "versions": ">=1.0.0 <2.0.0" },
     "defaultGroup": "standard-core",
     "subFactionGroups": {
         "doctrine": {
