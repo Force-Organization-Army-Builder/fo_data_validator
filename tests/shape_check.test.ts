@@ -97,7 +97,7 @@ describe('checkShapes', () => {
             };
         });
         assert.deepEqual(issues, [
-            "units/squad/upgrades/squad-options/options/grenades/effects/0/kind: Invalid discriminator value. Expected 'stat' | 'specialRule' | 'trait' | 'slotTag'",
+            "units/squad/upgrades/squad-options/options/grenades/effects/0/kind: Invalid discriminator value. Expected 'stat' | 'specialRule' | 'trait' | 'subType' | 'slotTag'",
         ]);
     });
 
@@ -521,5 +521,110 @@ describe('special-rule remove and replace, and selector specialRules', () => {
             `slotOptions/dig-in/effects/0/replace/from/0: ${slug}`,
             "slotOptions/dig-in/effects/0/replace: missing required property 'to'",
         ]);
+    });
+});
+
+describe('model effects and sub-type effects', () => {
+    type Loose = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+
+    async function issuesAfter(change: (game: Loose, faction: Loose) => void) {
+        const all = await files();
+        change(
+            all.find((f) => f.kind === 'GameSystem')!.data as Loose,
+            all.find((f) => f.kind === 'Faction')!.data as Loose
+        );
+        return checkShapes(all).map((i) => `${i.path}: ${i.message}`);
+    }
+
+    const split = (effects: Array<unknown>) => ({ kind: 'model', effects });
+    const places =
+        "a model effect is allowed only in slot options' effects, groups' effects and slots' effects";
+
+    it('takes a model effect in a slot option, a group and a slot, and a subType effect in a model effect', async () => {
+        const issues = await issuesAfter((game) => {
+            const one = split([{ kind: 'subType', add: ['elite'] }]);
+            game.slotOptions['extra-support'].effects.push(one);
+            game.groups['heavy-detachment'].effects = [one];
+            game.groups['heavy-detachment'].slots[0].effects = [
+                {
+                    ...one,
+                    count: 2,
+                    name: 'Pair',
+                    profiles: { anyOf: ['vehicle'] },
+                },
+            ];
+        });
+        assert.deepEqual(issues, []);
+    });
+
+    it('rejects profiles on an effect inside a model effect, saying why', async () => {
+        const issues = await issuesAfter((game) => {
+            game.slotOptions['lead-construct'].effects[0].effects[0].profiles =
+                {
+                    anyOf: ['vehicle'],
+                };
+        });
+        assert.deepEqual(issues, [
+            "slotOptions/lead-construct/effects/0/effects/0/profiles: an effect inside a model effect has no `profiles`: it reaches the split-off model only. To choose where the model comes from, give the model effect's own `profiles`",
+        ]);
+    });
+
+    it('rejects a model or slotTag effect inside a model effect', async () => {
+        const issues = await issuesAfter((game) => {
+            game.slotOptions['lead-construct'].effects[0].effects.push(
+                split([]),
+                { kind: 'slotTag', add: ['prime'] }
+            );
+        });
+        assert.deepEqual(issues, [
+            "slotOptions/lead-construct/effects/0/effects/2/kind: a model effect's effects are stat, specialRule, trait and subType effects on the split-off model; a model effect can't go inside one",
+            "slotOptions/lead-construct/effects/0/effects/3/kind: a model effect's effects are stat, specialRule, trait and subType effects on the split-off model; a slotTag effect can't go inside one",
+        ]);
+    });
+
+    it('rejects a model effect on an upgrade option, a list choice value, a listEffects entry and a unit modifier', async () => {
+        const all = await files();
+        const game = all.find((f) => f.kind === 'GameSystem')!.data as Loose;
+        const faction = all.find((f) => f.kind === 'Faction')!.data as Loose;
+        const sub = all.find((f) => f.kind === 'SubFaction')!.data as Loose;
+        const one = split([{ kind: 'subType', add: ['elite'] }]);
+        faction.units.squad.upgrades['squad-options'].options.grenades.effects =
+            [one];
+        game.choices.stance.values.offensive.effects = [one];
+        faction.groups['gun-line'].listEffects = [{ effects: [one] }];
+        Object.values(sub.unitModifiers as Loose)[0].actions.push(one);
+        const issues = checkShapes(all).map((i) => i.message);
+        assert.deepEqual(issues, [places, places, places, places]);
+    });
+
+    it('rejects a subType effect directly in a slot option, pointing to the model effect', async () => {
+        const issues = await issuesAfter((game) => {
+            game.slotOptions['extra-support'].effects.push({
+                kind: 'subType',
+                add: ['elite'],
+            });
+        });
+        assert.equal(issues.length, 1, issues.join('\n'));
+        assert.match(
+            issues[0],
+            /^slotOptions\/extra-support\/effects\/1\/kind: a slot option can't give a sub-type .* inside a model effect/
+        );
+    });
+
+    it('needs a positive whole count and slug sub-type ids', async () => {
+        const issues = await issuesAfter((game) => {
+            const effect = game.slotOptions['lead-construct'].effects[0];
+            effect.count = 0;
+            effect.effects[1].add = ['Sergeant'];
+        });
+        assert.equal(issues.length, 2, issues.join('\n'));
+        assert.ok(
+            issues[0].startsWith('slotOptions/lead-construct/effects/0/count: ')
+        );
+        assert.ok(
+            issues[1].startsWith(
+                'slotOptions/lead-construct/effects/0/effects/1/add/0: '
+            ) && issues[1].includes('kebab-case')
+        );
     });
 });

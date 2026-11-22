@@ -1,9 +1,34 @@
 # Changelog
 
-## Unreleased
+## 2.10.0
 
+- **Benefits for one model: `model` effects.** A `model` effect splits one model of the unit (or `count`) off its profile into a copy of that profile, and its own `effects` change only that copy. It is for "one model in the unit, chosen by the player, gains +1 Armour and the Sergeant sub-type": `{ "kind": "model", "effects": [{ "kind": "stat", "changes": [ … ] }, { "kind": "subType", "add": ["sergeant"] }] }`.
+    - **Source:** the first profile in record order that `profiles` picks (every profile when left out) and that has a model. Only the unit record's profiles are sources, so two `model` effects make two separate models.
+    - **Counting:** the source's count falls by `count` and the copy holds them, as with a replacing composition block. `unit.models()` and the unit's cost don't change.
+    - **Name:** `name`, or the source profile's name with the name of what gives the effect in brackets.
+    - **Inside:** stat, special-rule, trait and sub-type effects without `profiles`. Their `when` may use `profile`, meaning the split-off model. The `model` effect's own `when` can't.
+    - **Gear:** the gear engine still counts the model under its source profile, so it keeps its gear and gear choices and saved picks stay valid.
+    - **Where:** slot options' `effects`, groups' `effects` and slots' `effects`; not upgrade options, unit modifiers, list choice values or `listEffects`.
+    - **Saved lists** store nothing new: the split follows from the pick that gives it.
+    - **Why:** effects reached whole profiles, so a unit whose models share one profile couldn't give one of them a benefit. Several slot options in a motivating source have that shape.
+- **Sub-type effects.** `{ "kind": "subType", "profiles"?, "add"?, "remove"?, "when"? }` gives or takes away game `subTypes` (as `tags`): the unit's, or with `profiles` the picked profiles', whose `when` may then use `profile`. Later effects' profile filters, selectors and `tag:` references see the result; the gear engine doesn't.
+    - **Where:** unit-modifier actions, upgrade option effects, group and slot effects, list choice values, `listEffects`, and inside a `model` effect. Not directly in a slot option's `effects` (a shape error points to the `model` effect).
+    - **Checks:** with game `subTypes`, an unknown id is an error; without them, an id no unit or profile has as a tag is a warning, and the ids it gives are known to `tag:` references. An effect with neither `add` nor `remove` is an error; an id listed twice, or both given and taken away, is a warning.
+    - **Why:** rules that give a sub-type were written as a trait named like it, which profile filters and `tag:` references don't see.
+- **Checks for `model` effects.** Errors: no nested effects, a blank `name`, `profile` in its own `when`. Shape errors, each saying why: `profiles` on a nested effect, a nested `model` / `slotTag` / `slot` / `allowedRoles` effect, a `model` effect where it isn't allowed. Nested effects are checked as they are anywhere, and the traits they give count as traits in use.
+- **Shape check messages.** An unknown property that a schema gives its own message for (such as `profiles` inside a `model` effect) shows that message instead of "unknown property".
+- **Docs: "a unit made entirely of…".** `{ "traits": ["Foundry"], "exclude": [{ "profiles": { "noneOf": ["vehicle"] } }] }` matches only units whose every model is a vehicle with the trait (the data schema spec §8, the authoring guide's Selectors). No schema change.
+- **New exports:** `SubTypeEffectSchema`, `ModelEffectSchema`, `SplitModelEffectSchema` and the `SubTypeEffect`, `ModelEffect` and `SplitModelEffect` types. `HeldUnitEffect` now includes `SubTypeEffect`; `GroupEffect`, `SlotUnitEffect` and `SlotOptionEffect` include `ModelEffect`.
+- `examples/full` gains the Clockwork Guild's `construct-pack` (two to four battle constructs), the game's `lead-construct` prime option (the selector idiom and a `model` effect), and veterans' `seasoned-sergeants` (a `subType` effect with `profiles`). The source declares `"minValidatorVersion": "2.10.0"`. The authoring guide (Effects, Selectors, Slot options), the data schema spec (§5.2, §5.5, §5.6, §8), the expression spec's scope table, the README and the proposals (`docs/proposals/single-model-benefits.md`, part 2 of `docs/proposals/profile-trait-effects.md`) say so.
+- **For the app:**
+    - Apply a `subType` effect wherever trait effects apply: to the unit's `tags`, or with `profiles` to the picked profiles' `tags`, with `when` per profile. Keep the gear engine (default gear, per-model upgrades, `excludeProfiles`, `limitBy`) on the record's tags and those from unit modifiers.
+    - Apply a `model` effect in `playEffects` at its step: pick the source, copy it as it stands under an id of the app's own (never saved), move `count` from the source's live count to the copy (as `unitModels` does for a replacing block), and apply the nested effects to the copy through the per-profile path. Do nothing, with an issue on the pick, when no picked profile has a model.
+    - Show the copy as its own profile line with its count, name, stats, rules and tags, and lower the source's count; hide a source left with none. Show the copy with its source's per-model gear.
+    - Keep the gear engine on the record's profiles and counts, not the played unit's split counts.
+    - The data editor offers a sub-type effect editor, and a "one model" editor holding the stat, special-rule, trait and sub-type editors without their profile filters.
+- `schemaVersion` stays 1 and `expressionVersion` stays 1; everything is additive. Data using `subType` or `model` effects should set `"minValidatorVersion": "2.10.0"` in its manifest, and needs an app that supports them.
 - **Docs: the order of a sub-faction's unit modifiers.** The data schema spec (§5.2, Order) and the authoring guide (Effects) now say a sub-faction's `unitModifiers` apply in the order the file lists them, and each modifier's `actions` in their own order. So an effect's `when` sees what came before it and nothing after it. `examples/full`'s veterans already depend on this: `sergeants-fine` reads the sergeant's Shield before `tower-shields` replaces it. Across several sub-factions the order isn't specified. No schema or check change.
-- **For the app:** play a sub-faction's unit modifiers and their actions in record order, conditional and unconditional effects alike, so a `when` sees only the modifiers before it.
+- **For the app (unit-modifier order):** play a sub-faction's unit modifiers and their actions in record order, conditional and unconditional effects alike, so a `when` sees only the modifiers before it.
 
 ## 2.9.0
 

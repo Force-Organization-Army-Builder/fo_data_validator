@@ -6,6 +6,7 @@ import { formatDiagnostic } from '../src/expressions/diagnostics';
 import { readSource } from '../src/game_data/read_source';
 import { GroupTypeSchema } from '../src/game_data/schema';
 import { slotSources } from '../src/game_data/slot_sources';
+import type { ModelEffect } from '../src/types';
 import {
     DataIssue,
     GameDataSet,
@@ -2368,5 +2369,195 @@ describe('group listEffects', () => {
         assert.deepEqual(await withTrait(false), [
             "warning factions/field-army.json groups/gun-line: no unit has or is given the trait 'Column Drill'",
         ]);
+    });
+});
+
+describe('model effects and sub-type effects', () => {
+    const fieldArmy = (set: GameDataSet) =>
+        set.factions.find((f) => f.data.id === 'field-army')!.data;
+    const lead = (set: GameDataSet) =>
+        set.game.data.slotOptions!['lead-construct'];
+    const split = (set: GameDataSet) => lead(set).effects![0] as ModelEffect;
+    const groupEffects = (set: GameDataSet, effects: Array<unknown>) => {
+        fieldArmy(set).groups['gun-line'].effects = effects as Array<never>;
+    };
+    const morale = {
+        kind: 'stat' as const,
+        changes: [{ stat: 'morale', op: 'add' as const, value: 1 }],
+    };
+
+    it('has both in the full example', async () => {
+        const [set] = await sets(path.join(examples, 'full'));
+        const effect = split(set);
+        assert.equal(effect.kind, 'model');
+        assert.ok(effect.effects.some((e) => e.kind === 'subType'));
+        assert.ok(lead(set).units && typeof lead(set).units !== 'string');
+        assert.ok(
+            Object.values(sub(set, 'veterans').unitModifiers ?? {}).some((m) =>
+                m.actions.some((a) => a.kind === 'subType' && a.profiles)
+            )
+        );
+    });
+
+    it('takes a model effect on a group and a slot, with a profile filter, a count and a name', async () => {
+        const issues = await issuesAfter((set) => {
+            const effect = {
+                kind: 'model',
+                profiles: { anyOf: ['sergeant'] },
+                count: 1,
+                name: 'Standard Bearer',
+                effects: [morale, { kind: 'subType', add: ['character'] }],
+            };
+            groupEffects(set, [effect]);
+            fieldArmy(set).groups['gun-line'].slots[0].effects = [
+                effect as never,
+            ];
+        });
+        assert.deepEqual(issues, []);
+    });
+
+    it("lets an effect inside a model effect read the profile, but not the model effect's own when", async () => {
+        const issues = await issuesAfter((set) => {
+            const effect = split(set);
+            effect.when = { if: 'profile.is(tag:sergeant)', message: 'x' };
+            effect.effects.push(
+                {
+                    kind: 'trait',
+                    add: ['Promoted'],
+                    when: { if: 'profile.is(type:vehicle)', message: 'A vehicle' },
+                },
+                {
+                    kind: 'subType',
+                    add: ['elite'],
+                    when: { if: 'profile.is(tag:line)', message: 'A line model' },
+                }
+            );
+        });
+        assert.deepEqual(issues, [
+            "error game.json slotOptions/lead-construct/effects/0/when: 'profile' isn't available here (allowed: contingent, group, list, main, root, slot, unit)",
+        ]);
+    });
+
+    it('reports an empty model effect, a blank name and what its effects get wrong', async () => {
+        const issues = await issuesAfter((set) => {
+            groupEffects(set, [
+                { kind: 'model', name: '  ', effects: [] },
+                {
+                    kind: 'model',
+                    profiles: { anyOf: ['sargeant'] },
+                    effects: [
+                        {
+                            kind: 'stat',
+                            changes: [{ stat: 'armor', op: 'add', value: 1 }],
+                        },
+                        { kind: 'specialRule', rule: { id: 'fearles' } },
+                    ],
+                },
+            ]);
+        });
+        assert.deepEqual(issues, [
+            'error factions/field-army.json groups/gun-line/effects/0/effects: a model effect needs at least one effect for the split-off model',
+            "error factions/field-army.json groups/gun-line/effects/0/name: a blank name; leave it out to show the source profile's name with the name of what gives the effect",
+            "error factions/field-army.json groups/gun-line/effects/1/effects/0: unknown stat 'armor'",
+            "error factions/field-army.json groups/gun-line/effects/1/effects/1: unknown special rule 'fearles'",
+            "warning factions/field-army.json groups/gun-line/effects/1/profiles: 'sargeant' matches no unit type or sub-type (did you mean 'sergeant'?)",
+        ]);
+    });
+
+    it('counts the traits an effect inside a model effect gives as traits in use', async () => {
+        const withTrait = (give: boolean) =>
+            issuesAfter((set) => {
+                delete set.game.data.traits;
+                if (give)
+                    split(set).effects.push({
+                        kind: 'trait',
+                        add: ['Column Drill'],
+                    });
+                fieldArmy(set).groups['gun-line'].units = {
+                    traits: ['Column Drill'],
+                };
+            });
+        assert.deepEqual(await withTrait(true), []);
+        assert.deepEqual(await withTrait(false), [
+            "warning factions/field-army.json groups/gun-line: no unit has or is given the trait 'Column Drill'",
+        ]);
+    });
+
+    it("checks a subType effect's ids against the game's subTypes", async () => {
+        const issues = await issuesAfter((set) => {
+            groupEffects(set, [
+                { kind: 'subType', add: ['elit'] },
+                { kind: 'subType' },
+                { kind: 'subType', add: ['elite', 'elite'] },
+                { kind: 'subType', add: ['line'], remove: ['line'] },
+            ]);
+        });
+        assert.deepEqual(issues, [
+            "error factions/field-army.json groups/gun-line/effects/0/add: unknown sub-type 'elit' (did you mean 'elite'?); sub-types are declared in the game's subTypes",
+            'error factions/field-army.json groups/gun-line/effects/1: a subType effect needs add or remove',
+            "warning factions/field-army.json groups/gun-line/effects/2/add: sub-type 'elite' is listed more than once",
+            "warning factions/field-army.json groups/gun-line/effects/3: 'line' is both given and taken away",
+        ]);
+    });
+
+    it("doesn't let a subType effect without profiles read the profile", async () => {
+        const when = { if: 'profile.is(tag:sergeant)', message: 'x' };
+        const issues = await issuesAfter((set) => {
+            groupEffects(set, [
+                { kind: 'subType', add: ['elite'], when },
+                {
+                    kind: 'subType',
+                    profiles: { anyOf: ['sergeant'] },
+                    add: ['elite'],
+                    when,
+                },
+            ]);
+        });
+        assert.deepEqual(issues, [
+            "error factions/field-army.json groups/gun-line/effects/0/when: 'profile' isn't available here (allowed: contingent, group, list, main, root, slot, unit)",
+        ]);
+    });
+
+    it('takes a subType effect on an upgrade option, a list choice value and listEffects', async () => {
+        const issues = await issuesAfter((set) => {
+            const effect = { kind: 'subType' as const, add: ['elite'] };
+            const option = fieldArmy(set).units['squad'].upgrades![
+                'squad-options'
+            ].options['grenades'] as { effects?: Array<unknown> };
+            option.effects = [...(option.effects ?? []), effect];
+            const value = set.game.data.choices!['stance'].values['offensive'];
+            value.effects = [...(value.effects ?? []), effect];
+            fieldArmy(set).groups['gun-line'].listEffects = [
+                { effects: [effect] },
+            ];
+        });
+        assert.deepEqual(issues, []);
+    });
+
+    it('checks sub-types against unit tags, and makes them known to tag: references, when the game declares no subTypes', async () => {
+        const issues = await issuesAfter((set) => {
+            delete set.game.data.subTypes;
+            groupEffects(set, [
+                { kind: 'subType', add: ['vanguard'] },
+                {
+                    ...morale,
+                    when: { if: 'unit.is(tag:vanguard)', message: 'x' },
+                },
+            ]);
+        });
+        assert.ok(
+            issues.includes(
+                "warning factions/field-army.json groups/gun-line/effects/0/add: no unit or profile has the tag 'vanguard'"
+            ),
+            issues.join('\n')
+        );
+        assert.ok(
+            !issues.some((i) => i.includes('effects/1/when')),
+            issues.join('\n')
+        );
+        assert.ok(
+            !issues.some((i) => i.includes('lead-construct')),
+            issues.join('\n')
+        );
     });
 });

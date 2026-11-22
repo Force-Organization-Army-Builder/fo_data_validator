@@ -7,7 +7,9 @@ import type {
     Faction,
     FactionRecords,
     GameSystem,
+    ModelEffect,
     SubFaction,
+    SubTypeEffect,
     TraitEffect,
 } from '../types';
 
@@ -82,14 +84,18 @@ type TraitSource = Partial<
     Partial<Pick<SubFaction, 'unitModifiers'>> &
     Partial<Pick<GameSystem, 'choices'>>;
 
-/* Traits units have or trait effects give, anywhere in the sources */
-function traitsOf(sources: Array<TraitSource>) {
-    const traits = new Set<string>();
-    const fromEffect = (effect: { kind: string }) => {
-        if (effect.kind !== 'trait') return;
-        const { add, replace } = effect as TraitEffect;
-        add?.forEach((t) => traits.add(t));
-        if (replace) traits.add(replace.to);
+/*
+ * Every effect anywhere in the sources, those inside a `model` effect
+ * (validator 2.10.0) included
+ */
+function eachEffect(
+    sources: Array<TraitSource>,
+    visit: (effect: { kind: string }) => void
+) {
+    const fromEffect = (effect: { kind: string }): void => {
+        if (effect.kind === 'model')
+            (effect as ModelEffect).effects.forEach(fromEffect);
+        visit(effect);
     };
     const fromOptions = (options: Record<string, object>) => {
         for (const option of Object.values(options))
@@ -97,13 +103,9 @@ function traitsOf(sources: Array<TraitSource>) {
                 (option.effects as Array<{ kind: string }>).forEach(fromEffect);
     };
     for (const s of sources) {
-        for (const unit of Object.values(s.units ?? {})) {
-            unit.traits?.forEach((t) => traits.add(t));
-            for (const profile of unit.profiles)
-                profile.traits?.forEach((t) => traits.add(t));
+        for (const unit of Object.values(s.units ?? {}))
             for (const upgrade of Object.values(unit.upgrades ?? {}))
                 fromOptions(upgrade.options);
-        }
         for (const upgrade of Object.values(s.upgrades ?? {}))
             fromOptions(upgrade.options);
         for (const d of Object.values(s.groups ?? {})) {
@@ -124,7 +126,34 @@ function traitsOf(sources: Array<TraitSource>) {
             for (const v of Object.values(c.values))
                 v.effects?.forEach(fromEffect);
     }
+}
+
+/* Traits units have or trait effects give, anywhere in the sources */
+function traitsOf(sources: Array<TraitSource>) {
+    const traits = new Set<string>();
+    for (const s of sources)
+        for (const unit of Object.values(s.units ?? {})) {
+            unit.traits?.forEach((t) => traits.add(t));
+            for (const profile of unit.profiles)
+                profile.traits?.forEach((t) => traits.add(t));
+        }
+    eachEffect(sources, (effect) => {
+        if (effect.kind !== 'trait') return;
+        const { add, replace } = effect as TraitEffect;
+        add?.forEach((t) => traits.add(t));
+        if (replace) traits.add(replace.to);
+    });
     return [...traits];
+}
+
+/* Sub-types subType effects give (validator 2.10.0), anywhere in the sources */
+function givenSubTypes(sources: Array<TraitSource>) {
+    const tags = new Set<string>();
+    eachEffect(sources, (effect) => {
+        if (effect.kind === 'subType')
+            (effect as SubTypeEffect).add?.forEach((t) => tags.add(t));
+    });
+    return [...tags];
 }
 
 /**
@@ -157,7 +186,12 @@ export function buildVocabulary(
         subFactions: subFactions.map((s) => s.id),
         selectors: [...keys(game.selectors), ...all('selectors')],
         slotTags: keys(game.slotTags),
-        tags: tagsOf(records),
+        tags: [
+            ...new Set([
+                ...tagsOf(records),
+                ...givenSubTypes([game, ...records]),
+            ]),
+        ],
         subTypes: subTypeTags(game),
         traits: traitsOf([game, ...records, ...factions, ...subFactions]),
         definedTraits: definedTraits(game),

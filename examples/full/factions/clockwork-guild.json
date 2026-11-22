@@ -29,6 +29,42 @@
             ],
             "defaultGear": [{ "kind": "weapon", "id": "maul" }]
         },
+        "construct-pack": {
+            "id": "construct-pack",
+            "name": "Construct Pack",
+            "description": "Several models of one profile: the Lead Construct prime option splits one of them off.",
+            "role": "heavy",
+            "type": "vehicle",
+            "traits": ["Foundry"],
+            "cost": { "points": 200 },
+            "modelCount": 2,
+            "composition": [
+                {
+                    "id": "construct",
+                    "name": "Battle Construct",
+                    "profiles": { "construct": 1 },
+                    "min": 2,
+                    "max": 4,
+                    "cost": { "points": 100 }
+                }
+            ],
+            "profiles": [
+                {
+                    "id": "construct",
+                    "name": "Battle Construct",
+                    "template": "vehicle",
+                    "stats": {
+                        "move": "6",
+                        "hull": "4",
+                        "armour": "3",
+                        "capacity": "0"
+                    }
+                }
+            ],
+            "defaultGear": [
+                { "kind": "weapon", "id": "maul", "perModel": true }
+            ]
+        },
         "siege-construct": {
             "id": "siege-construct",
             "name": "Siege Construct",

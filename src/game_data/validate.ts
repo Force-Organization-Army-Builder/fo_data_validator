@@ -31,6 +31,7 @@ import type {
     CompositionBlock,
     ListChoice,
     ListRule,
+    ModelEffect,
     SlotOption,
     SlotSource,
     SlotSources,
@@ -44,6 +45,7 @@ import type {
     SpecialRuleSelection,
     StatEffect,
     SubFaction,
+    SubTypeEffect,
     TraitEffect,
     SubFactionGroup,
     Unit,
@@ -1800,13 +1802,32 @@ class Validator {
         }
     }
 
+    /*
+     * `onModel`: the effect is inside a `model` effect (validator 2.10.0), so
+     * it reaches the split-off model, a profile, even without `profiles`
+     */
     private effect(
         path: string,
-        effect: StatEffect | SpecialRuleEffect | TraitEffect | SlotTagEffect,
+        effect:
+            | StatEffect
+            | SpecialRuleEffect
+            | TraitEffect
+            | SubTypeEffect
+            | SlotTagEffect
+            | ModelEffect,
         scope: Scope,
-        scopes: ReadonlyArray<BuiltInScope>
+        scopes: ReadonlyArray<BuiltInScope>,
+        onModel = false
     ) {
-        if (effect.kind === 'stat') {
+        if (effect.kind === 'model') {
+            this.modelEffect(path, effect, scope, scopes);
+            // the split happens for the unit as a whole: no profile yet
+            scopes = scopes.filter((s) => s !== 'profile');
+        } else if (effect.kind === 'subType') {
+            this.subTypeEffect(path, effect);
+            if (!effect.profiles && !onModel)
+                scopes = scopes.filter((s) => s !== 'profile');
+        } else if (effect.kind === 'stat') {
             if (!effect.changes.length)
                 this.report(path, 'a stat effect with no changes', 'warning');
             for (const change of effect.changes) {
@@ -1831,9 +1852,97 @@ class Validator {
         } else {
             this.traitEffect(path, effect);
             // without `profiles` it changes the whole unit: no profile to look at
-            if (!effect.profiles) scopes = scopes.filter((s) => s !== 'profile');
+            if (!effect.profiles && !onModel)
+                scopes = scopes.filter((s) => s !== 'profile');
         }
         this.condition(path, effect.when, scopes, scope.vocabulary);
+    }
+
+    /*
+     * A model effect (validator 2.10.0): its effects reach the split-off
+     * model, so their `when` may read `profile` (that model)
+     */
+    private modelEffect(
+        path: string,
+        effect: ModelEffect,
+        scope: Scope,
+        scopes: ReadonlyArray<BuiltInScope>
+    ) {
+        if (!effect.effects.length)
+            this.report(
+                `${path}/effects`,
+                'a model effect needs at least one effect for the split-off model'
+            );
+        if (effect.name !== undefined && !effect.name.trim())
+            this.report(
+                `${path}/name`,
+                "a blank name; leave it out to show the source profile's name with the name of what gives the effect"
+            );
+        const onModel = scopes.includes('profile')
+            ? scopes
+            : [...scopes, 'profile' as BuiltInScope];
+        effect.effects.forEach((e, i) =>
+            this.effect(`${path}/effects/${i}`, e, scope, onModel, true)
+        );
+    }
+
+    /* Unit and profile tags in every loaded faction and sub-faction, in `tagId` form */
+    private loadedUnitTags?: Array<string>;
+
+    private unitTags(): Array<string> {
+        if (!this.loadedUnitTags) {
+            const { factions, subFactions } = this.set;
+            const tags = new Set<string>();
+            for (const f of [...factions, ...subFactions])
+                for (const unit of Object.values(f.data.units ?? {})) {
+                    unit.tags?.forEach((t) => tags.add(tagId(t)));
+                    for (const profile of unit.profiles)
+                        profile.tags?.forEach((t) => tags.add(tagId(t)));
+                }
+            this.loadedUnitTags = [...tags];
+        }
+        return this.loadedUnitTags;
+    }
+
+    /*
+     * A sub-type effect (validator 2.10.0): ids of the game's `subTypes`, or
+     * with none, tags some unit or profile has
+     */
+    private subTypeEffect(path: string, effect: SubTypeEffect) {
+        const { add = [], remove = [] } = effect;
+        if (!add.length && !remove.length)
+            this.report(path, 'a subType effect needs add or remove');
+        const declared = this.set.game.data.subTypes
+            ? keys(this.set.game.data.subTypes)
+            : undefined;
+        for (const [field, ids] of [
+            ['add', add],
+            ['remove', remove],
+        ] as const) {
+            this.duplicates(`${path}/${field}`, ids, 'sub-type');
+            for (const id of ids) {
+                if (declared && !declared.includes(id))
+                    this.report(
+                        `${path}/${field}`,
+                        `unknown sub-type '${id}'${didYouMean(id, declared)}; sub-types are declared in the game's subTypes`
+                    );
+                // without game subTypes, tags are free text: check them
+                // against the tags units and profiles carry, as `tag:` is
+                else if (!declared && !this.unitTags().includes(id))
+                    this.report(
+                        `${path}/${field}`,
+                        `no unit or profile has the tag '${id}'${didYouMean(id, this.unitTags())}`,
+                        'warning'
+                    );
+            }
+        }
+        for (const id of new Set(add))
+            if (remove.includes(id))
+                this.report(
+                    path,
+                    `'${id}' is both given and taken away`,
+                    'warning'
+                );
     }
 
     /* A slotTag effect (validator 2.2.0): game-declared tags, and categories some option of them has */
