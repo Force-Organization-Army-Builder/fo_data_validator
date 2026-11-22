@@ -292,7 +292,7 @@ describe('fo-validate with an extension source', () => {
 
     it('warns when the range leaves the game out', async () => {
         assert.deepEqual(await issuesFor('>=2.0.0'), [
-            "warning extends/0/versions: the game 'full-game' is version 1.0.0, which '>=2.0.0' leaves out",
+            "warning extends/0/versions: the game 'sample-skirmish' is version 1.0.0, which '>=2.0.0' leaves out",
         ]);
     });
 

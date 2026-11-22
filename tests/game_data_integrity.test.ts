@@ -1911,7 +1911,7 @@ describe('versions and version ranges', () => {
         for (const issue of issues)
             assert.match(
                 issue,
-                /^warning factions\/[a-z-]+\.json game\/versions: the game 'full-game' is version 2\.1\.0, which '>=1\.0\.0 <2\.0\.0' leaves out$/
+                /^warning factions\/[a-z-]+\.json game\/versions: the game 'sample-skirmish' is version 2\.1\.0, which '>=1\.0\.0 <2\.0\.0' leaves out$/
             );
     });
 

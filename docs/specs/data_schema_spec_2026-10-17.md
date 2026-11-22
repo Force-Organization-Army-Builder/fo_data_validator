@@ -29,8 +29,8 @@ A source is any public repo or static URL with a `forceorg.json` manifest at its
     "schemaVersion": 1,
     "expressionVersion": 1,
     "minValidatorVersion": "1.14.0",
-    "name": "Full coverage test source",
-    "disclaimer": "Test data only.",
+    "name": "Sample Skirmish",
+    "disclaimer": "Sample data, not a real game.",
     "provides": [
         {
             "game": "game.json",
@@ -197,7 +197,7 @@ The game may also hold `groups` every faction can take (formations shared by eve
     "id": "field-army",
     "version": "1.0.0",
     "name": "Field Army",
-    "game": { "id": "full-game", "versions": ">=1.0.0 <2.0.0" },
+    "game": { "id": "sample-skirmish", "versions": ">=1.0.0 <2.0.0" },
     "units": { … }, "weapons": { … }, "equipment": { … }, "upgrades": { … },
     "specialRules": { … }, "groups": { … }, "selectors": { … }
 }

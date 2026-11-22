@@ -4,7 +4,7 @@
     "version": "1.0.0",
     "name": "Clockwork Guild",
     "description": "A second faction of the game, whose constructs other factions' slots may draw on (a slot `source`).",
-    "game": { "id": "full-game", "versions": ">=1.0.0 <2.0.0" },
+    "game": { "id": "sample-skirmish", "versions": ">=1.0.0 <2.0.0" },
     "units": {
         "battle-construct": {
             "id": "battle-construct",

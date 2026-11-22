@@ -1,8 +1,11 @@
 # Changelog
 
-## Unreleased
+## 2.10.1
 
+- **`examples/full` is now "Sample Skirmish".** The full example is renamed so the app can offer it as its default example game: the game's `name` is "Sample Skirmish" and its `id` is `sample-skirmish` (was `full-game`). The source's `name`, `description` and `disclaimer` now read as a sample game, not a test fixture. The folder stays `examples/full`, so paths and URLs to it don't change.
+    - **Breaking for data that names the game:** a faction, sub-faction or extension source that extends this game must use `sample-skirmish`. `examples/extension` and the docs' examples are updated. Saved lists for the old id don't carry over.
 - **`examples/full`: `lead-construct` can now be picked.** The game's `standard-core` group gains a last, optional heavy slot tagged `prime`. Before, no slot both held a heavy unit and offered Prime options without a category limit: the Heavy Detachment's Prime slots take only Honour options. So the option couldn't be offered in a list built from the example alone. A Clockwork Guild list's Construct Pack in that slot is offered it. The slot is added last, so existing slot positions don't move. No schema or check change.
+- No schema, check or data format change: `schemaVersion`, `expressionVersion` and the example's `minValidatorVersion` (2.10.0) stay as they are.
 
 ## 2.10.0
 

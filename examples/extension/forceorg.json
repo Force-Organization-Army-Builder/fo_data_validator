@@ -6,7 +6,7 @@
     "disclaimer": "Test data only.",
     "extends": [
         {
-            "game": "full-game",
+            "game": "sample-skirmish",
             "versions": ">=1.0.0 <2.0.0",
             "subFactions": ["sub-factions/irregulars.json"]
         }

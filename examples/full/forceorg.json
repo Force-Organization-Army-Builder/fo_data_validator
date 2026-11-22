@@ -3,9 +3,9 @@
     "schemaVersion": 1,
     "expressionVersion": 1,
     "minValidatorVersion": "2.10.0",
-    "name": "Full coverage test source",
-    "description": "A generic source that uses every part of the data schema. Test fixture; not a real game.",
-    "disclaimer": "Test data only.",
+    "name": "Sample Skirmish",
+    "description": "A sample game for trying Force Org, with two factions and five sub-factions. It uses every part of the data schema, so it is also the validator's coverage example. Not a real game.",
+    "disclaimer": "Sample data, not a real game.",
     "provides": [
         {
             "game": "game.json",

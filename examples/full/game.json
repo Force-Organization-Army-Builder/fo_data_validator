@@ -1,9 +1,9 @@
 {
     "$schema": "../../schema/game.schema.json",
-    "id": "full-game",
+    "id": "sample-skirmish",
     "version": "1.0.0",
-    "name": "Full Coverage Game",
-    "description": "Exercises every game-level record kind.",
+    "name": "Sample Skirmish",
+    "description": "A sample game for trying Force Org. It uses every game-level record kind, so it is also the validator's coverage example.",
     "terms": {
         "group": {
             "word": "formation",
