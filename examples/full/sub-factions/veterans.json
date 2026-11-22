@@ -233,6 +233,19 @@
                 }
             ]
         },
+        "seasoned-sergeants": {
+            "id": "seasoned-sergeants",
+            "name": "Seasoned sergeants",
+            "description": "A sub-type effect with a profile filter: only the sergeants gain the Elite sub-type, not the rest of the squad.",
+            "selector": { "profiles": { "anyOf": ["Sergeant"] } },
+            "actions": [
+                {
+                    "kind": "subType",
+                    "profiles": { "anyOf": ["sergeant"] },
+                    "add": ["elite"]
+                }
+            ]
+        },
         "trained-spotters": {
             "id": "trained-spotters",
             "name": "Trained spotters",

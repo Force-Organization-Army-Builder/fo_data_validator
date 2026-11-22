@@ -360,7 +360,7 @@ A trait effect (validator 1.2.0) changes a unit's `traits`: `add` gives traits, 
 
 A filter that picks every profile still writes the trait to each profile; leave `profiles` out for the whole unit. What a profile holds counts for its unit as profile traits always do (§5.1): `unit.is(trait:…)`, selector `traits` and container `count` / `has` / `sum` with `trait:` see it, and `profile.is(trait:…)` only on the picked profiles. The order of steps (below) is unchanged. `examples/full`'s `sergeants-fine` (veterans) gives Promoted to a squad's shield-bearing sergeant only.
 
-**Order.** The app resolves a played unit's traits and effects in steps: the unit's own `traits`, then sub-faction unit modifiers (together, the resolved faction unit), list choice value effects (§3.7, validator 1.13.0), groups' `listEffects` (§7, validator 2.7.0), option effects, the group's effects, the slot's `effects` (§7.1), and slot-option effects. Each step's conditions see the traits from the steps before it, and a choice value's `units` selector sees the resolved faction unit. **Within the unit-modifier step**, a sub-faction's `unitModifiers` apply in the order the file lists them, and each modifier's `actions` in their own order, so an effect's `when` sees what the modifiers and actions before it gave and nothing after it. For example, `examples/full`'s veterans list `sergeants-fine`, whose `when` reads the sergeant's Shield, before `tower-shields`, which replaces Shield with Tower Shield, so the sergeant is Promoted. Across several sub-factions taken together the order isn't specified, so data shouldn't depend on it. A group's and its slots' `units` selectors see the unit's traits before the group's and slot options' effects (a group can't admit units by the trait it gives them, but can by one a list choice gives); a slot with a `source` sees only the unit's own `traits`. Everything else (`trait:` references in other expressions, list rules) sees the final traits. Slot-tag effects (§5.3) come from the steps before slot options, so every tag they add is in place before the slot's options are offered. Special rules follow the same steps (§5.4).
+**Order.** The app resolves a played unit's traits and effects in steps: the unit's own `traits`, then sub-faction unit modifiers (together, the resolved faction unit), list choice value effects (§3.7, validator 1.13.0), groups' `listEffects` (§7, validator 2.7.0), option effects, the group's effects, the slot's `effects` (§7.1), and slot-option effects. A `model` effect (§5.6) splits its models off at its own step, and later steps see the derived profile. Each step's conditions see the traits from the steps before it, and a choice value's `units` selector sees the resolved faction unit. **Within the unit-modifier step**, a sub-faction's `unitModifiers` apply in the order the file lists them, and each modifier's `actions` in their own order, so an effect's `when` sees what the modifiers and actions before it gave and nothing after it. For example, `examples/full`'s veterans list `sergeants-fine`, whose `when` reads the sergeant's Shield, before `tower-shields`, which replaces Shield with Tower Shield, so the sergeant is Promoted. Across several sub-factions taken together the order isn't specified, so data shouldn't depend on it. A group's and its slots' `units` selectors see the unit's traits before the group's and slot options' effects (a group can't admit units by the trait it gives them, but can by one a list choice gives); a slot with a `source` sees only the unit's own `traits`. Everything else (`trait:` references in other expressions, list rules) sees the final traits. Slot-tag effects (§5.3) come from the steps before slot options, so every tag they add is in place before the slot's options are offered. Special rules follow the same steps (§5.4).
 
 ### 5.3 Slot-tag effects
 
@@ -399,6 +399,69 @@ Checks:
 
 - **Errors:** a `rule` or `to` id unknown where the effect is defined (the faction with its sub-faction, then the game); a `remove` or `from` id that no loaded game, faction or sub-faction defines (these only take away what a unit holds, so a game-level effect may name a faction's rule); an empty `remove` or `from`; an effect with none of the three.
 - **Warnings:** a value given to a rule that isn't `configurable`; a configurable `to` with no value and no `defaultValue`; an id listed twice; a `rule` that `remove` or `from` also names.
+
+### 5.5 Sub-type effects
+
+```json
+{ "kind": "subType", "add": ["line"] }
+{ "kind": "subType", "profiles": { "anyOf": ["sergeant"] }, "add": ["character"], "remove": ["line"] }
+```
+
+A sub-type effect (validator 2.10.0) gives or takes away sub-types, which units and profiles carry as `tags` (§3.2). `add` and `remove` are ids of the game's `subTypes`; within one effect `remove` applies first, then `add`. Without `profiles` they change the unit's `tags`; with it, the `tags` of each profile the filter picks, and its `when` may then use `profile`, checked per profile, as for a trait effect (§5.2).
+
+- **What sees them:** later effects' `profiles` filters, selector `profiles` at their point in the order (§5.2, Order), `tag:` references and `profile.is(tag:…)`. A profile's tags count for its unit, as always (§5.1).
+- **What doesn't: the gear engine.** Default gear, per-model upgrades, `excludeProfiles` and `limitBy` keep reading the tags the unit record and sub-faction unit modifiers give, so an option or group never changes which models hold gear or which options are offered.
+- **Where:** unit-modifier `actions` (§4), option `effects` (§6), group and slot `effects` (§7), list choice values' `effects` (§3.7) and groups' `listEffects` (§7). **Not** directly in a slot option's `effects`: slot options apply last, so a sub-type there could reach only conditions. To give one model a sub-type, put the effect inside a `model` effect (§5.6), which slot options may have.
+- **Checks:** with game `subTypes`, an unknown id is an error. Without them, tags are free text, so an id no unit or profile has as a tag is a warning, and the ids `add` gives are known to `tag:` references (expression spec §9.2). An effect with neither `add` nor `remove` is an error; an id listed twice, or both given and taken away, is a warning.
+
+`examples/full`'s `seasoned-sergeants` (veterans) gives the Elite sub-type to a squad's sergeants only.
+
+### 5.6 Benefits for one model: `model` effects
+
+```json
+{
+    "kind": "model",
+    "effects": [
+        { "kind": "stat", "changes": [{ "stat": "armour", "op": "add", "value": 1 }] },
+        { "kind": "subType", "add": ["sergeant"] }
+    ]
+}
+```
+
+A `model` effect (validator 2.10.0) is for "one model in the unit, chosen by the player, gains…". It splits `count` models (default 1) off a profile into a copy of that profile, and its own `effects` change only the copy:
+
+| Field | Meaning |
+|---|---|
+| `profiles` | a `ProfileFilter`: the profiles the models may come from. Left out, every profile |
+| `count` | models split off, a positive whole number (default 1) |
+| `name` | shown for the split-off models. Left out, the source profile's name followed by the name of what gives the effect in brackets: "Battle Construct (Lead Construct)" |
+| `effects` | stat, special-rule, trait and sub-type effects (§5.2–§5.5) without `profiles`, applied in order to the split-off models only. Their `when` may use `profile`, meaning those models |
+| `when` | whether the split happens at all, in the scopes of a stat effect's `when` without `profile` |
+
+At its step in the order (§5.2, Order):
+
+1. **The source** is the first profile, in record order, that the filter picks and that has a model: its live count from `composition` (§5.1), or, for a unit with one profile and no `composition`, its `modelCount` plus additional models. Only the unit record's profiles are sources, so two `model` effects on one unit always make two separate split-off profiles. If no picked profile has a model, the effect does nothing, and the app shows an issue on what gave it.
+2. **A derived profile** is made: a copy of the source as it stands at that step (stats, special rules, tags and traits after every earlier effect), with the `name` above. Its id is the app's and is never saved.
+3. **Its models** come from the source, whose count falls by `count` (by what it has, if fewer). This is the counting a replacing block does (§5.1): `unit.models()` and the unit's cost don't change. A source left with no models isn't shown. With several profiles and no `composition`, per-profile counts are unknown, so the derived profile shows `count` models and the source's count stays unknown.
+4. **The nested `effects`** apply to the derived profile, in order.
+
+**What sees the split-off models:** the display (the unit lists "4× Battle Construct" and "1× Battle Construct (Lead Construct)"), later effects' `profiles` filters and `profile.is(…)` (the derived profile keeps its source's type and tags, plus what its effects give), and everything that reads the unit, since what a profile holds counts for its unit (§5.1): selector `traits`, `unit.is(…)`, `count(tag:…)` and list rules.
+
+**What doesn't: the gear engine.** Default gear, per-model upgrade counts, `excludeProfiles`, `profileId` upgrades and `limitBy` keep counting the models under their source profile, from the unit record's composition. So a split-off model keeps its gear and its share of every per-model pick, the options offered don't change, and saved gear picks stay valid. Where the app shows gear per profile, the derived profile shows its source's per-model gear.
+
+**Saved lists** store nothing new: the split follows from the pick that gives the effect (a slot option, a group, a slot). Removing the pick removes the split.
+
+**Where:** slot options' `effects` (§3.8), groups' `effects` and slots' `effects` (§7, slots a special rule or slot option adds included). **Not** unit-modifier `actions`, option `effects`, list choice values or `listEffects`: a split every unit of a kind always has belongs on the unit record as a profile and a composition block.
+
+**Checks:**
+
+- **Errors (shape):** a nested effect with `profiles`; a nested `model`, `slotTag`, `slot` or `allowedRoles` effect; a `count` that isn't a positive whole number; a `model` effect anywhere but the three places above.
+- **Errors:** no nested effects; a blank `name`; `profile` in the `model` effect's own `when`; what the nested effects get wrong, checked as those effects are anywhere.
+- **Warnings:** `profiles` values matching no unit type or sub-type (as on every profile filter).
+
+Traits and sub-types the nested effects give are known to `trait:` and `tag:` references, as other effects' are.
+
+"Only for a unit made entirely of vehicle models with trait F" is the selector idiom in §8, so `examples/full`'s `lead-construct` (game slot options) pairs one with a `model` effect.
 
 ## 6. Upgrades and options
 
@@ -556,6 +619,14 @@ A named selector's own `match` is always inline, so selectors can't refer to eac
 **`specialRules`** (validator 2.5.0) matches a unit when it or one of its profiles holds any of the listed rule ids, with any value: `{ "specialRules": ["skirmisher"] }`. It sees the unit's rules at the selector's point in the order, as `traits` sees its traits (§5.2): a group's and its slots' `units` before the group's effects, a slot option's `units` before slot-option effects, a sourced slot's `units` only the unit's own rules. A rule id no loaded game, faction or sub-faction defines is a warning.
 
 **`exclude`** (validator 1.3.0) lists units to leave out: a unit matching any entry doesn't match the selector. Each entry takes `unitIds`, `roles`, `traits`, `profiles` and `specialRules`, all of which must match, like a selector. `{ "exclude": [{ "traits": ["Veterans"] }, { "profiles": { "anyOf": ["Unique"] } }] }` is "not a Veterans unit, and no Unique model": unlike `profiles.noneOf`, which matches a unit with *some* profile outside the list, an excluded `profiles.anyOf` leaves out a unit with *any* matching profile.
+
+**"Made entirely of."** An excluded `profiles.noneOf` leaves out a unit with *some* profile outside the list, so it matches units whose every profile is in it. "Only for a unit made entirely of vehicle models with the Foundry trait" is:
+
+```json
+"units": { "traits": ["Foundry"], "exclude": [{ "profiles": { "noneOf": ["vehicle"] } }] }
+```
+
+`traits` is "every model" here when the trait is the unit's (on the record, or given without `profiles`), since every profile holds the unit's traits. A trait only some profiles hold can't be required of every profile: a profile filter matches type and tags, not traits.
 
 ## 9. Expressions in data
 

@@ -301,6 +301,103 @@ export const SlotTagEffectSchema = z
         "(validator 2.2.0) the slot that holds the unit counts as having these slot tags, so it offers their slot options and `slot.is(tag:…)` reads true. It tags the slot, not the unit, so there is no profile filter; in place before slot options are offered. Not allowed in a slot option's `effects`"
     );
 
+export const SubTypeEffectSchema = z
+    .strictObject({
+        kind: z.literal('subType'),
+        profiles: ProfileFilterSchema.optional().describe(
+            "the profiles whose models gain or lose the sub-types (their `tags`); its `when` may then use `profile`, checked per profile. Left out, the unit's own `tags` change"
+        ),
+        add: z
+            .array(SlugSchema)
+            .optional()
+            .describe(
+                'ids of game `subTypes` the unit (with `profiles`, each picked profile) gains, e.g. `["sergeant"]`'
+            ),
+        remove: z
+            .array(SlugSchema)
+            .optional()
+            .describe(
+                'ids of game `subTypes` the unit (with `profiles`, each picked profile) loses, if it has them'
+            ),
+        when: ConditionSchema.optional(),
+    })
+    .describe(
+        "(validator 2.10.0) gives or takes away sub-types: `remove`, then `add`. Later effects' profile filters, selectors and `tag:` references see the result; the gear engine (default gear, per-model upgrades, `excludeProfiles`) doesn't, and keeps reading the tags the unit record and sub-faction unit modifiers give. Needs the game's `subTypes`. Not allowed directly in a slot option's `effects`; put it inside a `model` effect there"
+    );
+
+/*
+ * An effect on the model a `model` effect splits off: the stat, special-rule,
+ * trait and sub-type effects without `profiles`, since they reach that model
+ * only
+ */
+const onSplitModel = <T extends z.ZodRawShape>(shape: T, description: string) =>
+    z
+        .strictObject(shape, {
+            error: (issue) =>
+                issue.code === 'unrecognized_keys' &&
+                issue.keys.includes('profiles')
+                    ? "an effect inside a model effect has no `profiles`: it reaches the split-off model only. To choose where the model comes from, give the model effect's own `profiles`"
+                    : undefined,
+        })
+        .describe(description);
+
+export const SplitModelEffectSchema = z.discriminatedUnion(
+    'kind',
+    [
+        onSplitModel(
+            StatEffectSchema.omit({ profiles: true }).shape,
+            "stat changes to the split-off model; its `when` may use `profile`, meaning that model"
+        ),
+        onSplitModel(
+            SpecialRuleEffectSchema.omit({ profiles: true }).shape,
+            "changes the split-off model's special rules: `remove`, then `replace`, then `rule` (added)"
+        ),
+        onSplitModel(
+            TraitEffectSchema.omit({ profiles: true }).shape,
+            "traits the split-off model gains or loses, as its own; its `when` may use `profile`, meaning that model"
+        ),
+        onSplitModel(
+            SubTypeEffectSchema.omit({ profiles: true }).shape,
+            "sub-types the split-off model gains or loses, as its own `tags`"
+        ),
+    ],
+    {
+        error: (issue) => {
+            const kind = (issue.input as { kind?: unknown } | undefined)?.kind;
+            return typeof kind === 'string' &&
+                ['model', 'slotTag', 'slot', 'allowedRoles'].includes(kind)
+                ? `a model effect's effects are stat, specialRule, trait and subType effects on the split-off model; a ${kind} effect can't go inside one`
+                : undefined;
+        },
+    }
+);
+
+export const ModelEffectSchema = z
+    .strictObject({
+        kind: z.literal('model'),
+        profiles: ProfileFilterSchema.optional().describe(
+            'the profiles the models may come from: the first in record order that has a model gives them. Left out, every profile'
+        ),
+        count: PositiveWholeNumberSchema.optional().describe(
+            'models split off (default 1), e.g. 2 for "two models in the unit gain…"; fewer when the profile has fewer'
+        ),
+        name: z
+            .string()
+            .optional()
+            .describe(
+                "shown for the split-off models, e.g. `Lead Construct`; left out, the source profile's name followed by the name of what gives the effect in brackets: `Battle Construct (Lead Construct)`"
+            ),
+        effects: z
+            .array(SplitModelEffectSchema)
+            .describe('applied in order to the split-off models only'),
+        when: ConditionSchema.optional().describe(
+            'whether the split happens at all; it sees the unit, not a profile'
+        ),
+    })
+    .describe(
+        "(validator 2.10.0) one model of the unit (or `count`), chosen by the player, gets its own benefits: it is split off its profile into a copy of that profile as it stands, and `effects` change only the copy. The unit's model count and cost don't change. The gear engine still counts the model under its source profile, so it keeps its gear and gear choices. Allowed in slot options' `effects`, groups' `effects` and slots' `effects`, e.g. a prime option where one model gains +1 Armour and the Sergeant sub-type"
+    );
+
 /* Slots filled from another faction (or other sub-factions of one) */
 
 export const SlotSourceSchema = z
@@ -346,17 +443,41 @@ const unitEffect = () => z.discriminatedUnion('kind', unitEffects);
 
 export const UnitEffectSchema = unitEffect();
 
+/* Where a `model` effect may go instead, for the error on the others */
+const MODEL_EFFECT_PLACES =
+    "a model effect is allowed only in slot options' effects, groups' effects and slots' effects";
+
+const kindOf = (input: unknown) =>
+    (input as { kind?: unknown } | undefined)?.kind;
+
 /*
- * The effects on a unit plus `slotTag` (validator 2.2.0), which tags the slot
- * holding the unit: allowed everywhere a unit effect is except slot options,
- * which are applied last, so a tag they added could never offer anything
+ * The effects on a unit plus `subType` (validator 2.10.0) and `slotTag`
+ * (validator 2.2.0), which tags the slot holding the unit: allowed everywhere
+ * a unit effect is except slot options, which are applied last, so a tag they
+ * added could never offer anything (and a sub-type there goes inside a
+ * `model` effect)
  */
-const heldEffects = [...unitEffects, SlotTagEffectSchema] as const;
-const heldEffect = () => z.discriminatedUnion('kind', heldEffects);
+const heldEffects = [
+    ...unitEffects,
+    SubTypeEffectSchema,
+    SlotTagEffectSchema,
+] as const;
+const heldEffect = () =>
+    z.discriminatedUnion('kind', heldEffects, {
+        error: (issue) =>
+            kindOf(issue.input) === 'model' ? MODEL_EFFECT_PLACES : undefined,
+    });
 
 export const HeldUnitEffectSchema = heldEffect();
 
-export const SlotUnitEffectSchema = heldEffect().describe(
+/*
+ * The held effects plus `model` (validator 2.10.0): what a group's and a
+ * slot's `effects` may apply
+ */
+const placedEffects = [...heldEffects, ModelEffectSchema] as const;
+const placedEffect = () => z.discriminatedUnion('kind', placedEffects);
+
+export const SlotUnitEffectSchema = placedEffect().describe(
     "applied to the unit filling the slot, after the group's effects, e.g. replacing a borrowed unit's faction trait"
 );
 
@@ -1118,7 +1239,7 @@ export const GroupRequirementSchema = z
     })
     .describe('units the list must already hold before the group can be taken');
 
-export const GroupEffectSchema = heldEffect().describe(
+export const GroupEffectSchema = placedEffect().describe(
     'applied to every unit in the group, including units in slots added later'
 );
 
@@ -1212,12 +1333,21 @@ export const AllowedRolesEffectSchema = z
 
 export const SlotOptionEffectSchema = z.discriminatedUnion(
     'kind',
-    [...unitEffects, SlotEffectSchema, AllowedRolesEffectSchema],
+    [
+        ...unitEffects,
+        ModelEffectSchema,
+        SlotEffectSchema,
+        AllowedRolesEffectSchema,
+    ],
     {
-        error: (issue) =>
-            (issue.input as { kind?: unknown } | undefined)?.kind === 'slotTag'
-                ? "a slot option can't have a slotTag effect: slot options are applied last, so a tag one added could never offer anything; give the slot the tag (`tags`), or put the slotTag effect on the group, the slot, an upgrade option, a sub-faction unit modifier or a list choice value"
-                : undefined,
+        error: (issue) => {
+            const kind = kindOf(issue.input);
+            if (kind === 'slotTag')
+                return "a slot option can't have a slotTag effect: slot options are applied last, so a tag one added could never offer anything; give the slot the tag (`tags`), or put the slotTag effect on the group, the slot, an upgrade option, a sub-faction unit modifier or a list choice value";
+            if (kind === 'subType')
+                return "a slot option can't give a sub-type to the whole unit or a profile; to give one model a sub-type, put the subType effect inside a model effect (`{ \"kind\": \"model\", \"effects\": [{ \"kind\": \"subType\", \"add\": [...] }] }`), or put it on the group, the slot, an upgrade option, a sub-faction unit modifier or a list choice value";
+            return undefined;
+        },
     }
 );
 
@@ -1396,15 +1526,22 @@ export const FactionSchema = z.strictObject({
         ),
 });
 
-export const UnitModifierActionSchema = z.discriminatedUnion('kind', [
+export const UnitModifierActionSchema = z.discriminatedUnion(
+    'kind',
+    [
     z.strictObject({ kind: z.literal('addUpgrade'), upgradeId: SlugSchema }),
     z
         .strictObject({ kind: z.literal('unavailable'), message: z.string() })
         .describe(
             "the matched units can't be taken (e.g. a sub-faction's banned vehicles)"
         ),
-    ...heldEffects,
-]);
+        ...heldEffects,
+    ],
+    {
+        error: (issue) =>
+            kindOf(issue.input) === 'model' ? MODEL_EFFECT_PLACES : undefined,
+    }
+);
 
 export const UnitModifierSchema = z
     .strictObject({

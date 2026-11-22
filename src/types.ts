@@ -95,6 +95,12 @@ export type SpecialRuleEffect = Infer<typeof S.SpecialRuleEffectSchema>;
 export type TraitEffect = Infer<typeof S.TraitEffectSchema>;
 /** Tags the slot holding the unit (validator 2.2.0) */
 export type SlotTagEffect = Infer<typeof S.SlotTagEffectSchema>;
+/** Gives or takes away sub-types, of the unit or (with `profiles`) some profiles (validator 2.10.0) */
+export type SubTypeEffect = Infer<typeof S.SubTypeEffectSchema>;
+/** Splits one model (or `count`) off its profile and gives it its own effects (validator 2.10.0) */
+export type ModelEffect = Infer<typeof S.ModelEffectSchema>;
+/** An effect inside a `model` effect: a stat, special-rule, trait or sub-type effect without `profiles` */
+export type SplitModelEffect = Infer<typeof S.SplitModelEffectSchema>;
 
 export type Group = Infer<typeof S.GroupSchema>;
 export type GroupListEffects = Infer<typeof S.GroupListEffectsSchema>;
@@ -105,8 +111,9 @@ export type SlotSource = Infer<typeof S.SlotSourceSchema>;
 export type SlotSources = Infer<typeof S.SlotSourcesSchema>;
 /** A stat, special-rule or trait effect on a unit */
 export type UnitEffect = Infer<typeof S.UnitEffectSchema>;
-/** A unit effect or a slot-tag effect: what everything but a slot option may apply (validator 2.2.0) */
+/** A unit effect, a sub-type effect (validator 2.10.0) or a slot-tag effect (validator 2.2.0): what everything but a slot option may apply */
 export type HeldUnitEffect = Infer<typeof S.HeldUnitEffectSchema>;
+/** A held effect or a `model` effect (validator 2.10.0): what a group's or slot's `effects` may apply */
 export type SlotUnitEffect = Infer<typeof S.SlotUnitEffectSchema>;
 export type TagOptions = Infer<typeof S.TagOptionsSchema>;
 export type AddedSlot = Infer<typeof S.AddedSlotSchema>;

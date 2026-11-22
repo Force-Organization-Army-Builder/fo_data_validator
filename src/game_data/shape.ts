@@ -66,7 +66,11 @@ function describe(
         case 'unrecognized_keys':
             return issue.keys.map((key) => ({
                 path: join([...path, key]),
-                message: `unknown property '${key}' (misspelt, or a field from a newer validator release)`,
+                // a schema's own message says why the key isn't allowed there
+                // (e.g. `profiles` inside a model effect); zod's default doesn't
+                message: issue.message.startsWith('Unrecognized key')
+                    ? `unknown property '${key}' (misspelt, or a field from a newer validator release)`
+                    : issue.message,
             }));
         case 'invalid_key': {
             // zod reports the key itself as the last part of the path

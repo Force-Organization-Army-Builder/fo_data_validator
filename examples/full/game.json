@@ -473,6 +473,32 @@
             "category": "honour",
             "slotRoles": ["heavy"],
             "effects": [{ "kind": "specialRule", "rule": { "id": "fearless" } }]
+        },
+        "lead-construct": {
+            "id": "lead-construct",
+            "name": "Lead Construct",
+            "description": "Only a unit made entirely of Foundry vehicles: the exclude leaves out any unit with a model that isn't a vehicle. The model effect splits one model off its profile; only that model gets the stat change and the Sergeant sub-type.",
+            "text": "Only for a unit made entirely of Vehicle models with the Foundry trait. One model in the unit, chosen by the player, gains +1 Armour and +2 Hull and the Sergeant sub-type.",
+            "slotTag": "prime",
+            "units": {
+                "traits": ["Foundry"],
+                "exclude": [{ "profiles": { "noneOf": ["vehicle"] } }]
+            },
+            "effects": [
+                {
+                    "kind": "model",
+                    "effects": [
+                        {
+                            "kind": "stat",
+                            "changes": [
+                                { "stat": "armour", "op": "add", "value": 1 },
+                                { "stat": "hull", "op": "add", "value": 2 }
+                            ]
+                        },
+                        { "kind": "subType", "add": ["sergeant"] }
+                    ]
+                }
+            ]
         }
     },
     "subChoices": {
