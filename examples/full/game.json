@@ -335,7 +335,8 @@
                         "if": "list.limit(points) >= 500",
                         "message": "Needs a points limit of at least 500"
                     }
-                }
+                },
+                { "roles": ["heavy"], "tags": ["prime"] }
             ]
         },
         "allied-formation": {
@@ -477,7 +478,7 @@
         "lead-construct": {
             "id": "lead-construct",
             "name": "Lead Construct",
-            "description": "Only a unit made entirely of Foundry vehicles: the exclude leaves out any unit with a model that isn't a vehicle. The model effect splits one model off its profile; only that model gets the stat change and the Sergeant sub-type.",
+            "description": "Only a unit made entirely of Foundry vehicles: the exclude leaves out any unit with a model that isn't a vehicle. The model effect splits one model off its profile; only that model gets the stat change and the Sergeant sub-type. Offered on the Standard Core Formation's heavy Prime slot, e.g. to a Clockwork Guild Construct Pack.",
             "text": "Only for a unit made entirely of Vehicle models with the Foundry trait. One model in the unit, chosen by the player, gains +1 Armour and +2 Hull and the Sergeant sub-type.",
             "slotTag": "prime",
             "units": {

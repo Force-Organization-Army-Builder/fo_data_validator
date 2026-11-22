@@ -2399,6 +2399,23 @@ describe('model effects and sub-type effects', () => {
         );
     });
 
+    it('offers lead-construct on some slot of the full example', async () => {
+        const [set] = await sets(path.join(examples, 'full'));
+        // a Prime slot open to heavy units, with no category limit on Prime
+        const slots = Object.values(set.game.data.groups ?? {}).flatMap(
+            (g) => g.slots
+        );
+        assert.ok(
+            slots.some(
+                (s) =>
+                    s.roles?.includes('heavy') &&
+                    s.tags?.includes('prime') &&
+                    !s.tagOptions?.prime
+            )
+        );
+        assert.equal(lead(set).category, undefined);
+    });
+
     it('takes a model effect on a group and a slot, with a profile filter, a count and a name', async () => {
         const issues = await issuesAfter((set) => {
             const effect = {

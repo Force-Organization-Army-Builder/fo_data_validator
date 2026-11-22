@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **`examples/full`: `lead-construct` can now be picked.** The game's `standard-core` group gains a last, optional heavy slot tagged `prime`. Before, no slot both held a heavy unit and offered Prime options without a category limit: the Heavy Detachment's Prime slots take only Honour options. So the option couldn't be offered in a list built from the example alone. A Clockwork Guild list's Construct Pack in that slot is offered it. The slot is added last, so existing slot positions don't move. No schema or check change.
+
 ## 2.10.0
 
 - **Benefits for one model: `model` effects.** A `model` effect splits one model of the unit (or `count`) off its profile into a copy of that profile, and its own `effects` change only that copy. It is for "one model in the unit, chosen by the player, gains +1 Armour and the Sergeant sub-type": `{ "kind": "model", "effects": [{ "kind": "stat", "changes": [ … ] }, { "kind": "subType", "add": ["sergeant"] }] }`.
