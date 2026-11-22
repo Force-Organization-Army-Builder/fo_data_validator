@@ -461,7 +461,7 @@ At its step in the order (§5.2, Order):
 
 Traits and sub-types the nested effects give are known to `trait:` and `tag:` references, as other effects' are.
 
-"Only for a unit made entirely of vehicle models with trait F" is the selector idiom in §8, so `examples/full`'s `lead-construct` (game slot options) pairs one with a `model` effect.
+"Only for a unit made entirely of vehicle models with trait F" is the selector idiom in §8, so `examples/full`'s `lead-construct` (game slot options) pairs one with a `model` effect. It is offered on `standard-core`'s heavy Prime slot, e.g. to a Clockwork Guild `construct-pack`.
 
 ## 6. Upgrades and options
 
