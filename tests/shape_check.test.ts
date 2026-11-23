@@ -597,18 +597,19 @@ describe('model effects and sub-type effects', () => {
         assert.deepEqual(issues, [places, places, places, places]);
     });
 
-    it('rejects a subType effect directly in a slot option, pointing to the model effect', async () => {
+    it('takes a subType effect directly in a slot option, with or without profiles', async () => {
         const issues = await issuesAfter((game) => {
-            game.slotOptions['extra-support'].effects.push({
-                kind: 'subType',
-                add: ['elite'],
-            });
+            game.slotOptions['extra-support'].effects.push(
+                { kind: 'subType', add: ['elite'] },
+                {
+                    kind: 'subType',
+                    profiles: { anyOf: ['sergeant'] },
+                    add: ['character'],
+                    remove: ['line'],
+                }
+            );
         });
-        assert.equal(issues.length, 1, issues.join('\n'));
-        assert.match(
-            issues[0],
-            /^slotOptions\/extra-support\/effects\/1\/kind: a slot option can't give a sub-type .* inside a model effect/
-        );
+        assert.deepEqual(issues, []);
     });
 
     it('needs a positive whole count and slug sub-type ids', async () => {

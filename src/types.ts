@@ -121,5 +121,6 @@ export type GroupRequirement = Infer<typeof S.GroupRequirementSchema>;
 
 export type SlotEffect = Infer<typeof S.SlotEffectSchema>;
 export type AllowedRolesEffect = Infer<typeof S.AllowedRolesEffectSchema>;
+/** A unit effect, a sub-type effect (validator 2.11.0), a `model` effect (validator 2.10.0), a slot effect or an allowed-roles effect: what a slot option's `effects` may apply */
 export type SlotOptionEffect = Infer<typeof S.SlotOptionEffectSchema>;
 export type SlotOption = Infer<typeof S.SlotOptionSchema>;
