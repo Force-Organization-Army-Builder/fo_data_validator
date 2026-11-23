@@ -2,7 +2,7 @@
     "$schema": "../../schema/source-manifest.schema.json",
     "schemaVersion": 1,
     "expressionVersion": 1,
-    "minValidatorVersion": "2.10.0",
+    "minValidatorVersion": "2.11.0",
     "name": "Sample Skirmish",
     "description": "A sample game for trying Force Org, with two factions and five sub-factions. It uses every part of the data schema, so it is also the validator's coverage example. Not a real game.",
     "disclaimer": "Sample data, not a real game.",

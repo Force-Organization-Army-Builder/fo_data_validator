@@ -1488,11 +1488,12 @@ describe('sub-types', () => {
             squad(set).upgrades!['heavy-weapons'].limitBy![0].profiles = {
                 anyOf: ['trooper'],
             };
-            grenadesWhen(set, 'unit.is(tag:anything) or unit.is(tag:elite)');
+            grenadesWhen(set, 'unit.is(tag:anything) or unit.is(tag:vanguard)');
         });
-        // only the existing check: no unit in this faction has `elite`
+        // only the existing check: no unit in this faction has `vanguard`,
+        // and no effect gives it
         assert.deepEqual(issues, [
-            "warning factions/field-army.json units/squad/upgrades/squad-options/options/grenades/when: no unit or profile has the tag 'elite'",
+            "warning factions/field-army.json units/squad/upgrades/squad-options/options/grenades/when: no unit or profile has the tag 'vanguard'",
         ]);
     });
 });
@@ -2549,6 +2550,64 @@ describe('model effects and sub-type effects', () => {
             ];
         });
         assert.deepEqual(issues, []);
+    });
+
+    it('checks a subType effect directly in a slot option as anywhere, its when reading the profile only with profiles', async () => {
+        const when = { if: 'profile.is(tag:sergeant)', message: 'x' };
+        const issues = await issuesAfter((set) => {
+            set.game.data.slotOptions!['extra-support'].effects!.push(
+                { kind: 'subType', add: ['elit'] },
+                { kind: 'subType' },
+                { kind: 'subType', add: ['elite'], when },
+                {
+                    kind: 'subType',
+                    profiles: { anyOf: ['sergeant'] },
+                    add: ['character'],
+                    when,
+                }
+            );
+        });
+        assert.deepEqual(issues, [
+            "error game.json slotOptions/extra-support/effects/1/add: unknown sub-type 'elit' (did you mean 'elite'?); sub-types are declared in the game's subTypes",
+            'error game.json slotOptions/extra-support/effects/2: a subType effect needs add or remove',
+            "error game.json slotOptions/extra-support/effects/3/when: 'profile' isn't available here (allowed: contingent, group, list, main, root, slot, unit)",
+        ]);
+    });
+
+    it('has a slot option giving the whole unit a sub-type in the full example', async () => {
+        const [set] = await sets(path.join(examples, 'full'));
+        const effects = set.game.data.slotOptions!['proven-veterans'].effects!;
+        assert.ok(
+            effects.some(
+                (e) => e.kind === 'subType' && !e.profiles && e.add?.length
+            )
+        );
+    });
+
+    it('makes the sub-types a slot option gives known to tag: references when the game declares no subTypes', async () => {
+        const issues = await issuesAfter((set) => {
+            delete set.game.data.subTypes;
+            set.game.data.slotOptions!['extra-support'].effects!.push({
+                kind: 'subType',
+                add: ['vanguard'],
+            });
+            groupEffects(set, [
+                {
+                    ...morale,
+                    when: { if: 'unit.is(tag:vanguard)', message: 'x' },
+                },
+            ]);
+        });
+        assert.ok(
+            issues.includes(
+                "warning game.json slotOptions/extra-support/effects/1/add: no unit or profile has the tag 'vanguard'"
+            ),
+            issues.join('\n')
+        );
+        assert.ok(
+            !issues.some((i) => i.includes('gun-line/effects/0/when')),
+            issues.join('\n')
+        );
     });
 
     it('checks sub-types against unit tags, and makes them known to tag: references, when the game declares no subTypes', async () => {

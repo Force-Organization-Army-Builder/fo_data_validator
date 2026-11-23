@@ -1426,7 +1426,7 @@
                 "kind"
             ],
             "additionalProperties": false,
-            "description": "(validator 2.10.0) gives or takes away sub-types: `remove`, then `add`. Later effects' profile filters, selectors and `tag:` references see the result; the gear engine (default gear, per-model upgrades, `excludeProfiles`) doesn't, and keeps reading the tags the unit record and sub-faction unit modifiers give. Needs the game's `subTypes`. Not allowed directly in a slot option's `effects`; put it inside a `model` effect there"
+            "description": "(validator 2.10.0) gives or takes away sub-types: `remove`, then `add`. Later effects' profile filters, selectors and `tag:` references see the result; the gear engine (default gear, per-model upgrades, `excludeProfiles`) doesn't, and keeps reading the tags the unit record and sub-faction unit modifiers give. Needs the game's `subTypes`. In a slot option's `effects` (validator 2.11.0), the last step, it reaches that option's later effects, list rules, other expressions' `tag:` references and the unit's display, not earlier steps"
         },
         "__schema90": {
             "type": "string",
@@ -2868,6 +2868,9 @@
                     },
                     {
                         "$ref": "#/definitions/__schema79"
+                    },
+                    {
+                        "$ref": "#/definitions/__schema89"
                     },
                     {
                         "$ref": "#/definitions/__schema145"

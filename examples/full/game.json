@@ -500,6 +500,16 @@
                     ]
                 }
             ]
+        },
+        "proven-veterans": {
+            "id": "proven-veterans",
+            "name": "Proven Veterans",
+            "description": "A subType effect without profiles, directly in a slot option: the whole unit gains the Elite sub-type. Slot options apply last, so it reaches what reads the unit as it ends up (list rules, `tag:elite` references, the unit's display) but not the group's or the slot's effects, nor which options are offered.",
+            "text": "Every model in the unit in this slot gains the Elite sub-type.",
+            "slotTag": "prime",
+            "slotRoles": ["troop"],
+            "cost": { "points": 5 },
+            "effects": [{ "kind": "subType", "add": ["elite"] }]
         }
     },
     "subChoices": {

@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.11.0
+
+- **Sub-type effects directly in slot options.** A slot option's `effects` may now hold a `subType` effect, for rules such as "all models in the unit selected for this slot gain the Elite sub-type": `{ "kind": "subType", "add": ["elite"] }` gives the whole unit the sub-type, and with `profiles` only the picked profiles (whose `when` may then use `profile`). Before, a slot option could give a sub-type only inside a `model` effect, so data wrote the whole-unit rule as a trait named like the sub-type, which profile filters and `tag:` references don't see.
+    - **What sees it:** slot options are still the last step, so the sub-type reaches that option's later effects, list rules, `tag:` references in other expressions and the unit's display. It doesn't reach anything earlier: the group's and the slot's effects, the option's own `units` and `when`, which options the slot offers, or the gear engine (which never sees `subType` effects anywhere).
+    - **Checks:** the same as everywhere else: game `subTypes` ids (without them, an id no unit or profile has as a tag is a warning, and the ids it gives are known to `tag:` references), `add` or `remove` required, `profile` in `when` only with `profiles`.
+    - **Why it was left out before:** the 2.10.0 design kept sub-types out of slot options because, applying last, they "could only reach conditions". 2.10.0 already allowed them inside a slot option's `model` effect on the grounds that showing on the models and counting in list rules is worth it; the same holds for the whole unit.
+    - Slot-tag effects are still not allowed in a slot option's `effects`.
+- `examples/full`'s game gains `proven-veterans`, a Prime slot option for troop slots whose `subType` effect makes the whole unit Elite. The source now declares `"minValidatorVersion": "2.11.0"`. The authoring guide (Effects, Slot options), the data schema spec (§3.8, §5.5), the README and the proposal (part 2 of `docs/proposals/profile-trait-effects.md`) say so. The `SubTypeEffect` type is now part of `SlotOptionEffect`.
+- **For the app:**
+    - Apply a `subType` effect in a slot option's `effects` at the slot-option step, exactly as in other places: to the unit's `tags`, or with `profiles` to the picked profiles' `tags`, with `when` per profile. Later effects of the same option and everything that reads the final unit (list rules, `tag:` references, the display) see it; the slot option's own `units` and `when` and the offered options don't. Keep the gear engine on the record's tags and those from unit modifiers.
+    - The data editor offers the sub-type effect editor among a slot option's effects, with its profile filter.
+    - Types: `SlotOptionEffect` now includes `SubTypeEffect`, so a `switch` over a slot option effect's `kind` needs a `subType` case.
+- `schemaVersion` stays 1 and `expressionVersion` stays 1; the change is additive. Data with a `subType` effect directly in a slot option should set `"minValidatorVersion": "2.11.0"` in its manifest, and needs an app that supports it.
+
 ## 2.10.1
 
 - **`examples/full` is now "Sample Skirmish".** The full example is renamed so the app can offer it as its default example game: the game's `name` is "Sample Skirmish" and its `id` is `sample-skirmish` (was `full-game`). The source's `name`, `description` and `disclaimer` now read as a sample game, not a test fixture. The folder stays `examples/full`, so paths and URLs to it don't change.

@@ -322,7 +322,7 @@ export const SubTypeEffectSchema = z
         when: ConditionSchema.optional(),
     })
     .describe(
-        "(validator 2.10.0) gives or takes away sub-types: `remove`, then `add`. Later effects' profile filters, selectors and `tag:` references see the result; the gear engine (default gear, per-model upgrades, `excludeProfiles`) doesn't, and keeps reading the tags the unit record and sub-faction unit modifiers give. Needs the game's `subTypes`. Not allowed directly in a slot option's `effects`; put it inside a `model` effect there"
+        "(validator 2.10.0) gives or takes away sub-types: `remove`, then `add`. Later effects' profile filters, selectors and `tag:` references see the result; the gear engine (default gear, per-model upgrades, `excludeProfiles`) doesn't, and keeps reading the tags the unit record and sub-faction unit modifiers give. Needs the game's `subTypes`. In a slot option's `effects` (validator 2.11.0), the last step, it reaches that option's later effects, list rules, other expressions' `tag:` references and the unit's display, not earlier steps"
     );
 
 /*
@@ -453,9 +453,9 @@ const kindOf = (input: unknown) =>
 /*
  * The effects on a unit plus `subType` (validator 2.10.0) and `slotTag`
  * (validator 2.2.0), which tags the slot holding the unit: allowed everywhere
- * a unit effect is except slot options, which are applied last, so a tag they
- * added could never offer anything (and a sub-type there goes inside a
- * `model` effect)
+ * a unit effect is. Slot options take `subType` (validator 2.11.0) but not
+ * `slotTag`: they are applied last, so a tag they added could never offer
+ * anything
  */
 const heldEffects = [
     ...unitEffects,
@@ -1335,6 +1335,7 @@ export const SlotOptionEffectSchema = z.discriminatedUnion(
     'kind',
     [
         ...unitEffects,
+        SubTypeEffectSchema,
         ModelEffectSchema,
         SlotEffectSchema,
         AllowedRolesEffectSchema,
@@ -1344,8 +1345,6 @@ export const SlotOptionEffectSchema = z.discriminatedUnion(
             const kind = kindOf(issue.input);
             if (kind === 'slotTag')
                 return "a slot option can't have a slotTag effect: slot options are applied last, so a tag one added could never offer anything; give the slot the tag (`tags`), or put the slotTag effect on the group, the slot, an upgrade option, a sub-faction unit modifier or a list choice value";
-            if (kind === 'subType')
-                return "a slot option can't give a sub-type to the whole unit or a profile; to give one model a sub-type, put the subType effect inside a model effect (`{ \"kind\": \"model\", \"effects\": [{ \"kind\": \"subType\", \"add\": [...] }] }`), or put it on the group, the slot, an upgrade option, a sub-faction unit modifier or a list choice value";
             return undefined;
         },
     }
