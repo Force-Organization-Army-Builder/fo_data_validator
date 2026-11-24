@@ -1581,6 +1581,12 @@ export const SubFactionSchema = z
             .describe(
                 "records that intentionally replace the parent's (same kind and id); any other collision is an error"
             ),
+        addOptions: z
+            .record(SlugSchema, z.record(SlugSchema, OptionSchema))
+            .optional()
+            .describe(
+                "options added to the parent's faction upgrades (shared lists), keyed by the upgrade's id, then by option id (validator 2.12.0). They are appended to the list once every taken sub-faction's records and overrides are merged in, and never replace an option, so an id the list already has is an error. Sub-factions that can be taken together must add an id identically"
+            ),
         unitModifiers: z.record(SlugSchema, UnitModifierSchema).optional(),
     })
     .describe(

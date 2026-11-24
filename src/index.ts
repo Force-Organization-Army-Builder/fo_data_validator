@@ -32,6 +32,7 @@ export {
 } from './game_data/resources';
 export { MANIFEST_FILE, assembleSource, listedFiles } from './game_data/source';
 export { slotSources } from './game_data/slot_sources';
+export { withAddedOptions } from './game_data/added_options';
 export type { SourceInfo, SourceOnDisk } from './game_data/source';
 export { SCHEMA_FILES, jsonSchemas } from './game_data/json_schema';
 

@@ -60,8 +60,11 @@
         "overrides": {
             "$ref": "#/definitions/__schema215"
         },
-        "unitModifiers": {
+        "addOptions": {
             "$ref": "#/definitions/__schema217"
+        },
+        "unitModifiers": {
+            "$ref": "#/definitions/__schema219"
         }
     },
     "required": [
@@ -3369,6 +3372,29 @@
             }
         },
         "__schema217": {
+            "description": "options added to the parent's faction upgrades (shared lists), keyed by the upgrade's id, then by option id (validator 2.12.0). They are appended to the list once every taken sub-faction's records and overrides are merged in, and never replace an option, so an id the list already has is an error. Sub-factions that can be taken together must add an id identically",
+            "allOf": [
+                {
+                    "$ref": "#/definitions/__schema218"
+                }
+            ]
+        },
+        "__schema218": {
+            "type": "object",
+            "propertyNames": {
+                "$ref": "#/definitions/__schema3"
+            },
+            "additionalProperties": {
+                "type": "object",
+                "propertyNames": {
+                    "$ref": "#/definitions/__schema3"
+                },
+                "additionalProperties": {
+                    "$ref": "#/definitions/__schema57"
+                }
+            }
+        },
+        "__schema219": {
             "type": "object",
             "propertyNames": {
                 "$ref": "#/definitions/__schema3"
@@ -3389,7 +3415,7 @@
                         "$ref": "#/definitions/__schema124"
                     },
                     "actions": {
-                        "$ref": "#/definitions/__schema218"
+                        "$ref": "#/definitions/__schema220"
                     }
                 },
                 "required": [
@@ -3402,7 +3428,7 @@
                 "description": "A sub-faction rule applied to every unit of the parent (and sub-faction) it selects"
             }
         },
-        "__schema218": {
+        "__schema220": {
             "type": "array",
             "items": {
                 "oneOf": [
@@ -3427,10 +3453,10 @@
                         "type": "object",
                         "properties": {
                             "kind": {
-                                "$ref": "#/definitions/__schema219"
+                                "$ref": "#/definitions/__schema221"
                             },
                             "message": {
-                                "$ref": "#/definitions/__schema220"
+                                "$ref": "#/definitions/__schema222"
                             }
                         },
                         "required": [
@@ -3458,11 +3484,11 @@
                 ]
             }
         },
-        "__schema219": {
+        "__schema221": {
             "type": "string",
             "const": "unavailable"
         },
-        "__schema220": {
+        "__schema222": {
             "type": "string"
         }
     },

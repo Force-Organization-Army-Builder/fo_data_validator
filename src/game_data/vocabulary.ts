@@ -81,7 +81,7 @@ type TraitSource = Partial<
         'units' | 'upgrades' | 'groups' | 'slotOptions' | 'specialRules'
     >
 > &
-    Partial<Pick<SubFaction, 'unitModifiers'>> &
+    Partial<Pick<SubFaction, 'unitModifiers' | 'addOptions'>> &
     Partial<Pick<GameSystem, 'choices'>>;
 
 /*
@@ -108,6 +108,9 @@ function eachEffect(
                 fromOptions(upgrade.options);
         for (const upgrade of Object.values(s.upgrades ?? {}))
             fromOptions(upgrade.options);
+        // options a sub-faction adds to its parent's lists (validator 2.12.0)
+        for (const added of Object.values(s.addOptions ?? {}))
+            fromOptions(added);
         for (const d of Object.values(s.groups ?? {})) {
             d.effects?.forEach(fromEffect);
             d.listEffects?.forEach((e) => e.effects.forEach(fromEffect));

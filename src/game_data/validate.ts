@@ -57,6 +57,7 @@ import type {
     GearSwap,
 } from '../types';
 import { slotSources } from './slot_sources';
+import { withAddedOptions } from './added_options';
 import { buildVocabulary, definedTraits, subTypeTags } from './vocabulary';
 
 /*
@@ -829,8 +830,54 @@ class Validator {
                         );
                     }
                 }
+                this.combinedAddedOptions(a.data, b.data, other, why);
             }
         });
+    }
+
+    /*
+     * Options two co-takeable sub-factions add to one list (validator 2.12.0)
+     * end up in one list, so one id must be the same option: between two
+     * additions, and between one's addition and the other's override of that
+     * list. Reported in the later file (`b`).
+     */
+    private combinedAddedOptions(
+        a: SubFaction,
+        b: SubFaction,
+        other: string,
+        why: string
+    ) {
+        const report = (path: string, message: string) =>
+            this.report(
+                path,
+                `${other} ${message}, and both can be taken together (${why}); make them identical or rename one`
+            );
+        for (const [list, added] of Object.entries(b.addOptions ?? {})) {
+            for (const [id, option] of Object.entries(added)) {
+                const theirs = a.addOptions?.[list]?.[id];
+                if (theirs && !sameData(theirs, option))
+                    report(
+                        `addOptions/${list}/${id}`,
+                        `also adds option '${id}' to upgrades '${list}', differently`
+                    );
+                const overridden = a.upgrades?.[list]?.options[id];
+                if (overridden && !sameData(overridden, option))
+                    report(
+                        `addOptions/${list}/${id}`,
+                        `overrides upgrades '${list}' with a different option '${id}'`
+                    );
+            }
+        }
+        for (const [list, added] of Object.entries(a.addOptions ?? {})) {
+            for (const [id, option] of Object.entries(added)) {
+                const mine = b.upgrades?.[list]?.options[id];
+                if (mine && !sameData(mine, option))
+                    report(
+                        `upgrades/${list}/options/${id}`,
+                        `adds a different option '${id}' to upgrades '${list}'`
+                    );
+            }
+        }
     }
 
     private subFaction(sub: SubFaction) {
@@ -880,7 +927,13 @@ class Validator {
         }
 
         const scope = this.scopeFor([parent, sub]);
+        // its own units see the lists with its additions, as the app plays them
+        scope.records.upgrades = withAddedOptions(
+            scope.records.upgrades ?? {},
+            [sub]
+        );
         this.records(sub, scope);
+        this.addedOptions(sub, parent, scope);
 
         if (!this.groupOf(sub, parent)) {
             const groups = [
@@ -913,6 +966,86 @@ class Validator {
             });
         }
         this.ids('unitModifiers', sub.unitModifiers);
+    }
+
+    /*
+     * A sub-faction's `addOptions` (validator 2.12.0): each key is one of the
+     * parent's faction upgrades that the sub-faction doesn't define itself,
+     * and each option is new to it and passes an option's own checks.
+     */
+    private addedOptions(sub: SubFaction, parent: Faction, scope: Scope) {
+        const optionScopes: Array<BuiltInScope> = [
+            'option',
+            ...FIELD_SCOPES.upgrade,
+        ];
+        for (const [id, added] of Object.entries(sub.addOptions ?? {})) {
+            const at = `addOptions/${id}`;
+            const target = parent.upgrades?.[id];
+            if (id in (sub.upgrades ?? {})) {
+                this.report(
+                    at,
+                    target
+                        ? `this sub-faction overrides upgrades '${id}' too; put these options in the override`
+                        : `upgrades '${id}' is this sub-faction's own; add the options to it directly`
+                );
+                continue;
+            }
+            if (!target) {
+                this.report(
+                    at,
+                    `the parent has no faction upgrade '${id}' to add options to${didYouMean(id, keys(parent.upgrades))}`
+                );
+                continue;
+            }
+            this.ids(at, added);
+            if (!keys(added).length)
+                this.report(at, 'adds no options', 'warning');
+            else if (!this.offersUpgrade(parent, id))
+                this.report(
+                    at,
+                    `no unit references upgrades '${id}' and no sub-faction's addUpgrade adds it, so the added options are never offered`,
+                    'warning'
+                );
+            // by key, as the app merges them (a key unlike its id is reported above)
+            for (const [key, option] of Object.entries(added)) {
+                const path = `${at}/${key}`;
+                if (key in target.options)
+                    this.report(
+                        path,
+                        `the parent's upgrades '${id}' already has an option '${key}', and an addition can't replace it; rename it, or override the list to change that option`
+                    );
+                this.option(path, option, scope, optionScopes);
+            }
+        }
+    }
+
+    /*
+     * Whether any unit of the faction or its sub-factions references the
+     * faction upgrade, or any of its sub-factions' unit modifiers adds it
+     */
+    private offersUpgrade(parent: Faction, id: string) {
+        const subs = this.set.subFactions
+            .map((s) => s.data)
+            .filter((s) => s.parent.faction === parent.id);
+        const units = [parent, ...subs].flatMap((r) =>
+            Object.values(r.units ?? {})
+        );
+        return (
+            units.some((unit) =>
+                Object.values(unit.upgrades ?? {}).some((upgrade) =>
+                    Object.values(upgrade.options).some(
+                        (o) => 'target' in o && o.target === id
+                    )
+                )
+            ) ||
+            subs.some((s) =>
+                Object.values(s.unitModifiers ?? {}).some((m) =>
+                    m.actions.some(
+                        (a) => a.kind === 'addUpgrade' && a.upgradeId === id
+                    )
+                )
+            )
+        );
     }
 
     /* ---------------------------------------------------------------- */
@@ -1759,47 +1892,46 @@ class Validator {
                 );
                 continue;
             }
-            this.costs(
-                `${at}/cost`,
-                option.cost,
-                scope,
-                optionScopes,
-                'option'
-            );
-            option.weaponRefs?.forEach((w) =>
-                this.known(at, 'weapon', w, keys(scope.records.weapons))
-            );
-            option.equipmentRefs?.forEach((e) =>
-                this.known(at, 'equipment', e, keys(scope.records.equipment))
-            );
-            option.swaps?.forEach((s, i) =>
-                this.swap(`${at}/swaps/${i}`, s, scope)
-            );
-            option.subChoices?.forEach((s) =>
-                this.known(
-                    at,
-                    'sub-choice',
-                    s,
-                    keys(scope.vocabulary.subChoices)
-                )
-            );
-            option.effects?.forEach((e, i) =>
-                this.effect(`${at}/effects/${i}`, e, scope, optionScopes)
-            );
-            this.condition(
-                at,
-                option.when,
-                optionScopes,
-                scope.vocabulary,
-                'option-when'
-            );
-            this.numberOrExpr(
-                `${at}/max`,
-                option.max,
-                optionScopes,
-                scope.vocabulary
-            );
+            this.option(at, option, scope, optionScopes);
         }
+    }
+
+    /* an option's own checks, wherever it sits (an upgrade, or a sub-faction's `addOptions`) */
+    private option(
+        at: string,
+        option: Option,
+        scope: Scope,
+        optionScopes: ReadonlyArray<BuiltInScope>
+    ) {
+        this.costs(`${at}/cost`, option.cost, scope, optionScopes, 'option');
+        option.weaponRefs?.forEach((w) =>
+            this.known(at, 'weapon', w, keys(scope.records.weapons))
+        );
+        option.equipmentRefs?.forEach((e) =>
+            this.known(at, 'equipment', e, keys(scope.records.equipment))
+        );
+        option.swaps?.forEach((s, i) =>
+            this.swap(`${at}/swaps/${i}`, s, scope)
+        );
+        option.subChoices?.forEach((s) =>
+            this.known(at, 'sub-choice', s, keys(scope.vocabulary.subChoices))
+        );
+        option.effects?.forEach((e, i) =>
+            this.effect(`${at}/effects/${i}`, e, scope, optionScopes)
+        );
+        this.condition(
+            at,
+            option.when,
+            optionScopes,
+            scope.vocabulary,
+            'option-when'
+        );
+        this.numberOrExpr(
+            `${at}/max`,
+            option.max,
+            optionScopes,
+            scope.vocabulary
+        );
     }
 
     /*
@@ -2474,7 +2606,11 @@ class Validator {
      * A slot's `unitWhen` (validator 2.6.0): a condition on the unit filling
      * it, so one that never reads `unit` can't judge the unit
      */
-    private unitWhen(path: string, condition: Condition | undefined, scope: Scope) {
+    private unitWhen(
+        path: string,
+        condition: Condition | undefined,
+        scope: Scope
+    ) {
         if (!condition) return;
         const at = `${path}/unitWhen`;
         if (!condition.message?.trim())

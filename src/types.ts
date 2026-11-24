@@ -55,6 +55,8 @@ export type Faction = Infer<typeof S.FactionSchema>;
 export type FactionRecords = Infer<typeof S.FactionRecordsSchema>;
 export type SubFaction = Infer<typeof S.SubFactionSchema>;
 export type SubFactionGroup = Infer<typeof S.SubFactionGroupSchema>;
+/** faction upgrade id → option id → option a sub-faction adds to it (validator 2.12.0) */
+export type AddedOptions = NonNullable<SubFaction['addOptions']>;
 export type UnitModifier = Infer<typeof S.UnitModifierSchema>;
 export type UnitModifierAction = Infer<typeof S.UnitModifierActionSchema>;
 

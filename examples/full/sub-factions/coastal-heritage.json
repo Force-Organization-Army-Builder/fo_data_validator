@@ -9,6 +9,20 @@
         "if": "choice(stance) == defensive",
         "message": "Coastal heritage is only for defensive lists"
     },
+    "description": "Adds a cutlass to the parent's shared `sidearms` list with `addOptions`, rather than overriding the whole list, so it combines with the other heritage's addition.",
+    "weapons": {
+        "cutlass": {
+            "id": "cutlass",
+            "name": "Cutlass",
+            "template": "melee",
+            "profiles": [{ "name": "Cutlass", "stats": { "attacks": "2", "damage": "1" } }]
+        }
+    },
+    "addOptions": {
+        "sidearms": {
+            "cutlass": { "id": "cutlass", "name": "Cutlass", "cost": { "points": 3 }, "weaponRefs": ["cutlass"] }
+        }
+    },
     "specialRules": {
         "local-knowledge": {
             "id": "local-knowledge",

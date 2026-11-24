@@ -1,5 +1,20 @@
 # Changelog
 
+## 2.12.0
+
+- **Sub-factions can add options to a shared list.** A sub-faction's new `addOptions` maps ids of the parent's faction upgrades (the shared lists units pull in by an UpgradeReference) to options that it adds to them, instead of replacing the whole list with an override. The additions are appended after every taken sub-faction's records and overrides are merged in, so sub-factions taken together can each add their own options to one list. A sub-faction that overrides a list only to add a few options can now add just those, keeping the parent's options in one place.
+    - **Checks (errors):** a key that isn't one of the parent's faction upgrades (with a hint); a key the sub-faction also defines in `upgrades` (an override or its own record); an option key the parent's list already has (an addition never replaces an option); an option key unlike its `id`; every check an option gets (gear, costs, effects, `when`, `max`, `subChoices`). Sub-factions that can be taken together must not add one id to one list differently, nor add an id that the other's override of the list has differently; identical copies merge as one.
+    - **Checks (warnings):** an empty addition; a list no unit references and no `addUpgrade` adds.
+    - A sub-faction's own units are checked against its extended lists. The parent's units are still checked against the parent's lists only, as with overrides.
+    - Traits and sub-types that added options' effects give count as given, for selectors and `tag:` references.
+- **`withAddedOptions(upgrades, subFactions)`** is exported: the upgrades with each sub-faction's additions appended in order, keeping any option an upgrade already has. Never mutates the inputs. The `AddedOptions` type is exported too.
+- `examples/full`: both heritages add an option to the Field Army's `sidearms` (`cutlass`, `broadsword`, each with its weapon). The source now declares `"minValidatorVersion": "2.12.0"`. The authoring guide (§6), the data schema spec (§4, §4.3, §6), the README and `docs/proposals/sub-faction-list-additions.md` say so.
+- **For the app:**
+    - In `resolveFaction`, after merging the records and before applying unit modifiers, set `upgrades` to `withAddedOptions(upgrades, subFactions)` with the sub-factions in merge order. Option display, `when`, `swapFrom`, costs and export read resolved options and need no change.
+    - Data Editor: a sub-faction section for options added to the parent's lists (pick a parent faction upgrade, then edit options with the option editor), and the additions shown under each list with the sub-faction that adds them.
+    - A pick of an option the unit no longer offers (its sub-faction was removed, or the data changed) is skipped today without a message; it should be a list issue. This applies to overrides as well.
+- `schemaVersion` stays 1 and `expressionVersion` stays 1; the change is additive. Data using `addOptions` should set `"minValidatorVersion": "2.12.0"` in its manifest, and needs an app that supports it.
+
 ## 2.11.0
 
 - **Sub-type effects directly in slot options.** A slot option's `effects` may now hold a `subType` effect, for rules such as "all models in the unit selected for this slot gain the Elite sub-type": `{ "kind": "subType", "add": ["elite"] }` gives the whole unit the sub-type, and with `profiles` only the picked profiles (whose `when` may then use `profile`). Before, a slot option could give a sub-type only inside a `model` effect, so data wrote the whole-unit rule as a trait named like the sub-type, which profile filters and `tag:` references don't see.

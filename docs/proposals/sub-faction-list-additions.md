@@ -1,6 +1,11 @@
 # Proposal: sub-factions adding options to a shared upgrade list
 
-Status: **draft, not implemented.** Written against validator 2.11.0 and the Force Org app as of 2026-11-24. No schema or code change has been made.
+Status: **Option A implemented in validator 2.12.0** (see `CHANGELOG.md`, the authoring guide §6 and the data schema spec §4.3). The app side is still to do. Written against validator 2.11.0 and the Force Org app as of 2026-11-24.
+
+What shipped differs from the text below in two small ways:
+
+- Checks 1 to 7 are implemented. Check 8 is done for the sub-faction's own units only, which are checked against its extended lists. The parent's units are still checked against the parent's lists, so a clash or `mirrorOf` mismatch caused only by an addition isn't reported. Overrides have the same gap.
+- The merge is exported as `withAddedOptions(upgrades, subFactions)`, so the app applies additions exactly as the checker reads them.
 
 A sub-faction can change a shared faction upgrade (a list that units pull in through an UpgradeReference) only by **replacing the whole record** through `overrides`. That works while one sub-faction at a time changes a list. It breaks when sub-factions that can be taken together each need to **add** options to the same list: the validator requires co-takeable sub-factions to define a record identically, so neither can override it. This proposal compares five ways to let a sub-faction add options without replacing the list, and recommends one: a sub-faction **`addOptions`** section, merged additively across every sub-faction taken (Option A). The examples use `examples/full` vocabulary (the Field Army's `sidearms` list and its `heritage` group, which allows two picks). The motivating data is described generically.
 
@@ -98,7 +103,7 @@ Warnings, lower priority:
 
 - Picks are stored by plain option id, and additions change no existing id, so saved lists stay valid.
 - If data moves from an override to `addOptions`, it keeps the same ids, so saved lists are unaffected. Only the order of options on screen changes: added ones move to the end.
-- If the sub-faction pick is removed, its added options stop being offered and the app skips their picks without saying so. Overrides behave the same way today. The app should report "X is no longer offered" for such a pick. That's a small follow-up that helps both cases.
+- If the sub-faction pick is removed, its added options stop being offered and the app skips their picks without saying so. Overrides behave the same way today. The app should report "X is no longer offered" for such a pick. That's a small change that helps both cases, and it's part of the app work for 2.12.0.
 
 ### Force Org app
 
@@ -157,6 +162,8 @@ Option rendering, `when` handling, `swapFrom`, costs and export need no change, 
 ## Companion F: smarter co-takeability (separate, optional)
 
 `combinedSubFactions()` treats two sub-factions as co-takeable from their groups alone. If sub-faction S's `when` requires `contingent.is(subfaction:X)` (alone, or as one side of an `and`), and X shares a group of at most one with T, then S and T can never be taken together, so the identical-definition rule shouldn't apply to them. With this, the pick files and the `default`-group files could use the same plain ids for their (different) upgrades and added options. That would undo the need for prefixes, which were added only to get past this check. It's worth its own proposal: it needs care with `or`, negation and `main.` / `list.` scopes, and it changes when an existing error fires.
+
+**Allies.** The mixed army's sub-faction can also be an allied contingent's pick, next to a main contingent that took one of the `default`-group sub-factions. That doesn't break F. Records are merged per contingent (each contingent resolves its own faction and picks), so two sub-factions taken by different contingents never share one set of records. F must therefore infer only from `contingent.is(…)`. A `main.is(…)` or `list.is(…)` requirement says nothing about what the same contingent takes, so it must not count.
 
 ---
 
