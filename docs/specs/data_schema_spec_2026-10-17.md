@@ -221,6 +221,7 @@ A **sub-faction** (`SubFaction`) is a modifier of its parent:
     ```
 
 - Stat and special-rule effects may carry a `when` condition (`examples/full/sub-factions/veterans.json`).
+- **`addOptions`** (validator 2.12.0) adds options to the parent's shared lists without replacing them (§4.3).
 
 ### 4.1 Sub-faction groups
 
@@ -259,6 +260,25 @@ An equipment record is `{ id, name, description?, text, weapon? }`. **`weapon`**
 
 - **Holding.** Only the equipment is held. `defaultGear`, `equipmentRefs`, swaps, restrictions, `limitBy` and `equipment:` / `count` / `has` treat it like any equipment. The profile is not a weapon of the unit: it has no weapon id, and no `weapon:` reference, weapon restriction, `limitBy` or swap can match it.
 - **Checks.** As for a weapon's profiles: an unknown template is an error, a profile's own `template` equal to the `weapon`'s a warning, missing or extra stats and unknown special rules errors. Warnings: `profiles` empty; a weapon with the same id as the equipment in the same scope (the faction, with its parent merged in for a sub-faction), usually one left behind when its profile was moved onto the equipment, which a unit holding both would show twice.
+
+### 4.3 Options added to shared lists
+
+A sub-faction's **`addOptions`** (validator 2.12.0) maps ids of the parent's faction upgrades to options (keyed by id, the same shape as a faction upgrade's `options`) that it adds to them:
+
+```json
+"addOptions": {
+    "sidearms": {
+        "cutlass": { "id": "cutlass", "name": "Cutlass", "cost": { "points": 3 }, "weaponRefs": ["cutlass"] }
+    }
+}
+```
+
+- **Merge.** After the records of every sub-faction a contingent took are merged over the parent's (`overrides` included), each sub-faction's additions are appended to the merged upgrade, in the sub-faction merge order (§4.1). They are applied before unit modifiers, so `addUpgrade` copies include them. An addition never replaces an option: an id the upgrade already has keeps its option. The checker makes sure such an id is either an error or an identical copy, so the result doesn't depend on the order. Additions to an upgrade that isn't there are left out. The package exports `withAddedOptions(upgrades, subFactions)`, which does exactly this.
+- **Once merged** an added option is an option of the list: UpgradeReferences pull it in, and the referencing upgrade's `perModel`, `profileId`, `swapFrom`, `restrictions`, `limitBy` and `gearNote` apply to it. A unit's own option with the same id hides it, as with any shared option (§6).
+- **Checks (errors):** a key that isn't one of the parent's faction upgrades (with a hint); a key the sub-faction also defines in `upgrades` (an override: put the options there; its own record: write them there); an option key the parent's upgrade already has; an option key unlike its `id`; and the checks every option gets (costs, `weaponRefs` / `equipmentRefs`, `swaps`, `subChoices`, `effects`, `when`, `max`), in the scope of the parent and the sub-faction. Sub-factions that can be taken together (§4.1) must not add one id to one upgrade differently, nor add an id that the other's override of that upgrade has differently; identical copies merge as one.
+- **Checks (warnings):** an empty addition; an upgrade that no unit of the parent or its sub-factions references and no sub-faction's `addUpgrade` adds, so the additions are never offered.
+- **Scope of the other checks.** The sub-faction's own units are checked against the lists with its additions (a `default` may name an added option). The parent's units are checked against the parent's lists only, as with overrides, so a shared-option clash or a `mirrorOf` option-set mismatch that only an addition causes isn't reported.
+- **Saved lists** store picks by option id, so additions change nothing for existing picks. Moving options from an override into `addOptions` with the same ids keeps saved lists valid.
 
 ## 5. Units and profiles
 
@@ -478,7 +498,7 @@ A unit's upgrades hold options or references to faction upgrades, and may use `r
   Counted models respect `profileId` and `excludeProfiles`.
 - `multiSelect` (boolean, default false) lets an upgrade's options be held together (checkboxes). Without it `single` / `every` upgrades are a single choice; `multiple` / `some` upgrades hold several picks regardless. A multi-select upgrade at its cap drops its earliest pick for a new one; at a cap of 1 the options take turns.
 - Upgrade `min` / `max` are validated as expressions but **not enforced by the app** (they don't count picks or models); cap picks with `perModel` and `limitBy`. "Choose two, repeats allowed" is `perModel: { "type": "multiple", "max": 2 }` with `multiSelect: true`; a capped exchange adds `limitBy` on the gear being swapped and `swaps` on the options.
-- **Shared option lists and clashes:** an upgrade can pull in a shared faction upgrade's options by reference (e.g. a universal "Officer Gear" list). When an id appears more than once, the **upgrade's own option wins** over a shared one (a General's free Rifle, not the officer list's 5pt Rifle, which no player would take), and **between shared upgrades the one referenced first wins**, which the checker warns about since it's probably a mistake. The hidden options aren't offered; the Data Editor shows under each reference what it hides and why. Ids therefore stay plain (`rifle`), and editing a shared list can never break another unit's upgrade.
+- **Shared option lists and clashes:** an upgrade can pull in a shared faction upgrade's options by reference (e.g. a universal "Officer Gear" list). When an id appears more than once, the **upgrade's own option wins** over a shared one (a General's free Rifle, not the officer list's 5pt Rifle, which no player would take), and **between shared upgrades the one referenced first wins**, which the checker warns about since it's probably a mistake. The hidden options aren't offered; the Data Editor shows under each reference what it hides and why. Ids therefore stay plain (`rifle`), and editing a shared list can never break another unit's upgrade. A sub-faction can add options to a shared list with `addOptions` (§4.3) instead of replacing it.
 - Option and unit **costs are resource maps**.
 - Upgrades may have `when`, `min`, `max`; options `when` and `max`.
 - **Options may have `effects`**, stat or special-rule effects applied to the unit while picked (armour plating: +1 armour).

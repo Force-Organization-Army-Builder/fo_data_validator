@@ -6,6 +6,7 @@ import { formatDiagnostic } from '../src/expressions/diagnostics';
 import { readSource } from '../src/game_data/read_source';
 import { GroupTypeSchema } from '../src/game_data/schema';
 import { slotSources } from '../src/game_data/slot_sources';
+import { withAddedOptions } from '../src/game_data/added_options';
 import type { ModelEffect } from '../src/types';
 import {
     DataIssue,
@@ -240,6 +241,206 @@ describe('grouped sub-factions', () => {
             }
         });
         assert.deepEqual(issues, []);
+    });
+});
+
+describe('options added to shared lists (addOptions)', () => {
+    // both heritages add an option to the parent's `sidearms` (see the example)
+    const cutlass = {
+        id: 'cutlass',
+        name: 'Cutlass',
+        cost: { points: 3 },
+        weaponRefs: ['cutlass'],
+    };
+
+    it("appends each sub-faction's options, never replacing one", () => {
+        const knife = { id: 'knife', name: 'Knife', cost: { points: 2 } };
+        const upgrades = {
+            sidearms: {
+                id: 'sidearms',
+                name: 'Sidearms',
+                perModel: { type: 'single' as const },
+                options: { knife },
+            },
+        };
+        const result = withAddedOptions(upgrades, [
+            {
+                addOptions: {
+                    sidearms: {
+                        cutlass,
+                        knife: { ...knife, cost: { points: 9 } },
+                    },
+                    missing: { cutlass },
+                },
+            },
+            {
+                addOptions: {
+                    sidearms: { broadsword: { ...cutlass, id: 'broadsword' } },
+                },
+            },
+        ]);
+        assert.deepEqual(Object.keys(result), ['sidearms']);
+        assert.deepEqual(Object.keys(result.sidearms.options), [
+            'knife',
+            'cutlass',
+            'broadsword',
+        ]);
+        // the list's own option is kept, and the input isn't changed
+        assert.equal(result.sidearms.options.knife, knife);
+        assert.deepEqual(Object.keys(upgrades.sidearms.options), ['knife']);
+        // nothing to add: the same object back
+        assert.equal(withAddedOptions(upgrades, [{}]), upgrades);
+    });
+
+    it("reports targets that are unknown or the sub-faction's own", async () => {
+        const issues = await issuesAfter((set) => {
+            const coastal = sub(set, 'coastal-heritage');
+            coastal.addOptions!['sidearm'] = { cutlass };
+            coastal.addOptions!['oars'] = { cutlass };
+            coastal.upgrades = {
+                oars: {
+                    id: 'oars',
+                    name: 'Oars',
+                    perModel: { type: 'single' },
+                    options: {
+                        oar: { id: 'oar', name: 'Oar', cost: { points: 1 } },
+                    },
+                },
+            };
+            const veterans = sub(set, 'veterans');
+            veterans.upgrades!['banner'] = structuredClone(
+                set.factions[0].data.upgrades!['banner']
+            );
+            veterans.overrides!.push({ kind: 'upgrades', id: 'banner' });
+            veterans.addOptions = { banner: { cutlass } };
+        });
+        assert.deepEqual(issues, [
+            "error sub-factions/veterans.json addOptions/banner: this sub-faction overrides upgrades 'banner' too; put these options in the override",
+            "error sub-factions/coastal-heritage.json addOptions/sidearm: the parent has no faction upgrade 'sidearm' to add options to (did you mean 'sidearms'?)",
+            "error sub-factions/coastal-heritage.json addOptions/oars: upgrades 'oars' is this sub-faction's own; add the options to it directly",
+        ]);
+    });
+
+    it('reports options the list has, and checks each option', async () => {
+        const issues = await issuesAfter((set) => {
+            sub(set, 'coastal-heritage').addOptions!['sidearms'] = {
+                knife: { ...cutlass, id: 'knife' },
+                cutlas: { ...cutlass, weaponRefs: ['cutlas'] },
+                net: {
+                    id: 'net',
+                    name: 'Net',
+                    cost: { points: 1 },
+                    when: { if: 'unit.has(weapon:trident)', message: 'x' },
+                },
+            };
+        });
+        assert.deepEqual(issues, [
+            "error sub-factions/coastal-heritage.json addOptions/sidearms/cutlas: id is 'cutlass', but the key is 'cutlas'",
+            "error sub-factions/coastal-heritage.json addOptions/sidearms/knife: the parent's upgrades 'sidearms' already has an option 'knife', and an addition can't replace it; rename it, or override the list to change that option",
+            "error sub-factions/coastal-heritage.json addOptions/sidearms/cutlas: unknown weapon 'cutlas'",
+            "error sub-factions/coastal-heritage.json addOptions/sidearms/net/when: unknown weapon 'trident'",
+        ]);
+    });
+
+    it('warns about additions that are empty or never offered', async () => {
+        const issues = await issuesAfter((set) => {
+            const parent = set.factions[0].data;
+            parent.upgrades!['spare'] = {
+                id: 'spare',
+                name: 'Spare',
+                perModel: { type: 'single' },
+                options: {
+                    none: { id: 'none', name: 'None', cost: { points: 0 } },
+                },
+            };
+            sub(set, 'coastal-heritage').addOptions!['spare'] = { cutlass };
+            sub(set, 'highland-heritage').addOptions!['banner'] = {};
+        });
+        assert.ok(
+            issues.includes(
+                "warning sub-factions/coastal-heritage.json addOptions/spare: no unit references upgrades 'spare' and no sub-faction's addUpgrade adds it, so the added options are never offered"
+            )
+        );
+        assert.ok(
+            issues.includes(
+                'warning sub-factions/highland-heritage.json addOptions/banner: adds no options'
+            )
+        );
+    });
+
+    it("lets the sub-faction's own units see its additions", async () => {
+        const issues = await issuesAfter((set) => {
+            const squad = structuredClone(set.factions[0].data.units['squad']);
+            squad.id = 'coastal-squad';
+            squad.name = 'Coastal Squad';
+            squad.upgrades!['trooper-sidearm'].default = 'cutlass';
+            sub(set, 'coastal-heritage').units = { 'coastal-squad': squad };
+        });
+        assert.ok(
+            !issues.some((i) => i.includes("isn't one of its options")),
+            issues.join('\n')
+        );
+    });
+
+    it('requires sub-factions taken together to add an id identically', async () => {
+        const issues = await issuesAfter((set) => {
+            sub(set, 'highland-heritage').addOptions!['sidearms']['cutlass'] = {
+                ...cutlass,
+                cost: { points: 4 },
+            };
+            sub(set, 'highland-heritage').weapons!['cutlass'] = structuredClone(
+                sub(set, 'coastal-heritage').weapons!['cutlass']
+            );
+        });
+        assert.deepEqual(issues, [
+            "error sub-factions/coastal-heritage.json addOptions/sidearms/cutlass: sub-faction 'highland-heritage' (sub-factions/highland-heritage.json) also adds option 'cutlass' to upgrades 'sidearms', differently, and both can be taken together (group 'heritage' allows more than one); make them identical or rename one",
+        ]);
+        // identical additions are one option
+        assert.deepEqual(
+            await issuesAfter((set) => {
+                sub(set, 'highland-heritage').addOptions!['sidearms'][
+                    'cutlass'
+                ] = cutlass;
+                sub(set, 'highland-heritage').weapons!['cutlass'] =
+                    structuredClone(
+                        sub(set, 'coastal-heritage').weapons!['cutlass']
+                    );
+            }),
+            []
+        );
+    });
+
+    it('requires an addition to match an override taken with it', async () => {
+        const issues = await issuesAfter((set) => {
+            const parentList = set.factions[0].data.upgrades!['sidearms'];
+            // veterans (default group) and a heritage can be taken together
+            const veterans = sub(set, 'veterans');
+            veterans.upgrades!['sidearms'] = {
+                ...structuredClone(parentList),
+                options: {
+                    ...structuredClone(parentList.options),
+                    cutlass: { ...cutlass, cost: { points: 1 } },
+                },
+            };
+            veterans.weapons = {
+                ...veterans.weapons,
+                cutlass: structuredClone(
+                    sub(set, 'coastal-heritage').weapons!['cutlass']
+                ),
+            };
+            veterans.overrides!.push({ kind: 'upgrades', id: 'sidearms' });
+            // and the extension's irregulars, read after the heritages
+            const irregulars = sub(set, 'irregulars');
+            irregulars.upgrades = {
+                sidearms: structuredClone(veterans.upgrades!['sidearms']),
+            };
+            irregulars.weapons = { cutlass: veterans.weapons!['cutlass'] };
+            irregulars.overrides!.push({ kind: 'upgrades', id: 'sidearms' });
+        });
+        assert.deepEqual(issues, [
+            "error sub-factions/coastal-heritage.json addOptions/sidearms/cutlass: sub-faction 'veterans' (sub-factions/veterans.json) overrides upgrades 'sidearms' with a different option 'cutlass', and both can be taken together (they're in groups 'default' and 'heritage'); make them identical or rename one",
+            "error sub-factions/irregulars.json upgrades/sidearms/options/cutlass: sub-faction 'coastal-heritage' (sub-factions/coastal-heritage.json) adds a different option 'cutlass' to upgrades 'sidearms', and both can be taken together (they're in groups 'heritage' and 'default'); make them identical or rename one",
+        ]);
     });
 });
 
@@ -2236,16 +2437,20 @@ describe('slot unitWhen, group addedSlotRoles and slot option when', () => {
     it('has all three in the full example', async () => {
         const [set] = await sets(path.join(examples, 'full'));
         assert.ok(garrisonSlot(set).unitWhen);
-        assert.deepEqual(set.game.data.groups!['standard-core'].addedSlotRoles, [
-            'support',
-        ]);
+        assert.deepEqual(
+            set.game.data.groups!['standard-core'].addedSlotRoles,
+            ['support']
+        );
         assert.ok(set.game.data.slotOptions!['flexible-troop'].when);
     });
 
     it("checks a unitWhen's expression, scopes and message", async () => {
         const issues = await issuesAfter((set) => {
             const slots = fieldArmy(set).groups['garrison'].slots;
-            slots[1].unitWhen = { if: 'profile.is(tag:sergeant)', message: 'x' };
+            slots[1].unitWhen = {
+                if: 'profile.is(tag:sergeant)',
+                message: 'x',
+            };
             slots[0].unitWhen = { if: 'unit.has(weapon:canon)', message: ' ' };
         });
         assert.deepEqual(issues, [
@@ -2341,9 +2546,7 @@ describe('group listEffects', () => {
             spearhead(set).listEffects = [
                 {
                     units: { unitIds: ['walkr'] },
-                    effects: [
-                        { kind: 'specialRule', rule: { id: 'fearles' } },
-                    ],
+                    effects: [{ kind: 'specialRule', rule: { id: 'fearles' } }],
                 },
                 { units: '@vehicles', effects: [] },
             ];
@@ -2442,12 +2645,18 @@ describe('model effects and sub-type effects', () => {
                 {
                     kind: 'trait',
                     add: ['Promoted'],
-                    when: { if: 'profile.is(type:vehicle)', message: 'A vehicle' },
+                    when: {
+                        if: 'profile.is(type:vehicle)',
+                        message: 'A vehicle',
+                    },
                 },
                 {
                     kind: 'subType',
                     add: ['elite'],
-                    when: { if: 'profile.is(tag:line)', message: 'A line model' },
+                    when: {
+                        if: 'profile.is(tag:line)',
+                        message: 'A line model',
+                    },
                 }
             );
         });

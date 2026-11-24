@@ -634,6 +634,28 @@ A modifier of a faction (an order, a regiment, a sponsor):
 - It may hold the same record kinds as a faction (`units`, `weapons`, `upgrades`, `specialRules`, `groups`, …); they merge over the parent's. A record that shares a kind and id with the parent's **replaces** it only if listed in `overrides`; any other collision is an error.
 - `unitModifiers` pick units with a selector and add a copy of a faction upgrade (`addUpgrade`, stable id from the modifier), apply stat/special-rule/trait effects, tag the slot holding them (`slotTag`, validator ≥2.2.0), or make the units `unavailable`.
 
+### Adding options to a shared list (`addOptions`)
+
+To give a parent's shared list (a faction upgrade that units pull in with an UpgradeReference) a few more options, **add** them rather than overriding the whole list (validator 2.12.0):
+
+```json
+// sub-factions/coastal-heritage.json
+"weapons": { "cutlass": { "id": "cutlass", "name": "Cutlass", "template": "melee", "profiles": [ … ] } },
+"addOptions": {
+    "sidearms": {
+        "cutlass": { "id": "cutlass", "name": "Cutlass", "cost": { "points": 3 }, "weaponRefs": ["cutlass"] }
+    }
+}
+```
+
+- Keys are ids of the **parent's** faction upgrades; values are options, as in a faction upgrade's `options`. Each one is checked like any option (gear, costs, effects, `when`, `max`, `subChoices`).
+- The additions are appended to the list after every taken sub-faction's records and overrides are merged in, so every unit referencing `sidearms` offers `cutlass`, with the referencing upgrade's `perModel`, `swapFrom`, `profileId`, restrictions and `gearNote`. `addUpgrade` copies of the list include them. A unit's own option with the same id still wins, as with any shared option.
+- An addition never replaces an option: an id the parent's list already has is an error (override the list to change that option). Adding to a list the sub-faction also overrides is an error (put the options in the override), as is adding to one of its own upgrades (write them there).
+- Sub-factions that can be taken together must add an id **identically**, or use different ids. The same goes for an addition and another sub-faction's override of the list. Identical copies merge as one. In `examples/full` both heritages add to `sidearms`, so an army with both offers `knife`, `axe`, `cutlass` and `broadsword`, and one with neither offers only `knife` and `axe`.
+- Gear an added option gives must be in the sub-faction (or the parent), like any option's.
+- The checker warns when no unit references the list and no `addUpgrade` adds it, so the options would never be offered.
+- Prefer `addOptions` over an override that copies the whole list to add a few items: the parent's options are then written once, and co-takeable sub-factions can each add theirs.
+
 ### Several picks per faction (sub-faction groups)
 
 When the rules let an army make more than one independent pick (a doctrine **and** a heritage, or one heritage plus a second under a condition), declare each pick as a group on the **faction** and put each sub-faction in one:
@@ -726,6 +748,7 @@ The complete reference is `docs/specs/expression_language_spec_2026-10-17.md`; t
 - Restrictions written against option ids; they take gear (`{ "kind", "id" }`).
 - `upgrades`, `weapons`, `equipment`, `specialRules` or `groups` left out of a faction instead of `{}`.
 - A sub-faction record with the same kind and id as the parent's but no `overrides` entry.
+- Overriding a whole shared list only to add a few options; use `addOptions` (validator 2.12.0+).
 - An expression using a scope the field can't see, a verb the scope doesn't have, or `a-b` for subtraction.
 - Writing a rule as an expression when a typed form exists. The checker warns ("use `restrictions.exclusions`", "use a `resourceCap` list rule", …); do as it says.
 - No `defaultGroup` on a main faction, or one that isn't a root group of the game.

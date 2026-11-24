@@ -185,6 +185,8 @@ Data that uses a `subType` or `model` effect needs validator **2.10.0** or later
 
 Data that puts a `subType` effect directly in a slot option's `effects` (not inside a `model` effect) needs validator **2.11.0** or later, and an app that supports it.
 
+Data that uses a sub-faction's `addOptions` needs validator **2.12.0** or later, and an app that supports it.
+
 Data that declares `minValidatorVersion` needs validator **1.14.0** or later. From 1.14.0 every id, record key and `@selector` reference must be lowercase kebab-case.
 
 ## Releasing
